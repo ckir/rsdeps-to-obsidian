@@ -3,10 +3,11 @@
 //! The `full-workspace` fixture exercises lib + 2 bins, inline/nested
 //! modules, `#[path]`, aliases, `pub use`, duplicate edges, a real external
 //! (`serde`), `#[cfg]`, the ambiguous `qux.rs` + `qux/mod.rs` layout, and a
-//! reserved-name (`con`) module. Item-level `use` paths (e.g.
-//! `use crate::models::User;`) intentionally resolve to `SCOPE001`
-//! diagnostics with no edge (accepted conservative behavior); the goldens
-//! document actual behavior.
+//! Item-level `use` paths (e.g. `use crate::models::User;`) resolve by
+//! longest-prefix attribution to the nearest known ancestor module (per
+//! Post-MVP amendment A), and bare `core::...` imports resolve across the
+//! member package's targets; only genuinely unresolvable ownership stays
+//! `SCOPE001`. The goldens document actual behavior.
 //!
 //! Snapshots live in `tests/snapshots/`: `tree/` mirrors the output tree
 //! (`manifest.json`, `graph.json`, every `.md` note), `stdout.txt` and
@@ -177,16 +178,19 @@ fn full_run_produces_golden_bytes() {
     assert_eq!(summary.packages, 2, "packages: {summary:?}");
     assert_eq!(summary.targets, 4, "targets: {summary:?}");
     assert_eq!(summary.modules, 17, "modules: {summary:?}");
-    // 24 deduped dependencies: 13 Module containment keys + 18 Use/ReExport
+    // 26 deduped dependencies: 13 Module containment keys + 20 Use/ReExport
     // keys minus the 7 (from,to) overlaps dedup collapses to the higher
     // precedence (api->models goes ReExport, the rest Use): api->models,
     // api->qux (pub mod qux + #[cfg(unix)] use crate::qux), api->routes,
-    // alpha->shared, beta->shared, services->deep, core->models. 1 distinct
-    // external (serde@1.0.229, referenced from the lib root and beta).
-    assert_eq!(summary.dependencies, 24, "dependencies: {summary:?}");
+    // alpha->shared, beta->shared, services->deep, core->models. Amendment A
+    // adds 2 new keys: api->core::core::models (bare member import) and
+    // api::api::models->api::api::services (item-level prefix attribution);
+    // the other 7 newly-resolved item imports collapse into existing keys.
+    // 1 distinct external (serde@1.0.229, referenced from the lib root and beta).
+    assert_eq!(summary.dependencies, 26, "dependencies: {summary:?}");
     assert_eq!(summary.external, 1, "external: {summary:?}");
-    // CFG001 + MOD002 + 9 item-level SCOPE001.
-    assert_eq!(summary.warnings, 11, "warnings: {summary:?}");
+    // CFG001 + MOD002 (all 9 former item-level SCOPE001 now resolve).
+    assert_eq!(summary.warnings, 2, "warnings: {summary:?}");
     // Fresh tree: 17 module notes + 1 external note + index.md + graph.json.
     assert_eq!(summary.create.len(), 20, "create: {summary:?}");
     assert!(summary.update.is_empty(), "fresh run updates: {summary:?}");
@@ -330,8 +334,8 @@ fn stdout_stderr_split() {
         "packages: 2",
         "targets: 4",
         "modules: 17",
-        "dependencies: 24",
-        "warnings: 11",
+        "dependencies: 26",
+        "warnings: 2",
     ] {
         assert!(stdout.contains(key), "stdout missing {key:?}:\n{stdout}");
     }
@@ -343,9 +347,14 @@ fn stdout_stderr_split() {
         !stdout.contains("\"protocol_version\""),
         "stdout is never JSON:\n{stdout}"
     );
-    for key in ["warning[CFG001]", "warning[MOD002]", "warning[SCOPE001]"] {
+    for key in ["warning[CFG001]", "warning[MOD002]"] {
         assert!(stderr.contains(key), "stderr missing {key:?}:\n{stderr}");
     }
+    // Amendment A resolves every item-level import, so no SCOPE001 remains.
+    assert!(
+        !stderr.contains("warning[SCOPE001]"),
+        "stderr must carry no SCOPE001:\n{stderr}"
+    );
     assert!(
         !stderr.contains("\"protocol_version\""),
         "stderr is never JSON:\n{stderr}"

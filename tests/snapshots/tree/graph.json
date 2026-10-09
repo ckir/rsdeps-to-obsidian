@@ -244,11 +244,17 @@
       "from": "api::api",
       "to": "api::api::services",
       "target_type": "internal",
-      "kind": "module"
+      "kind": "use"
     },
     {
       "from": "api::api",
       "to": "api::api::services::deep",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api",
+      "to": "core::core::models",
       "target_type": "internal",
       "kind": "use"
     },
@@ -279,6 +285,12 @@
     {
       "from": "api::api::models",
       "to": "api::api::routes",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::models",
+      "to": "api::api::services",
       "target_type": "internal",
       "kind": "use"
     },
@@ -352,96 +364,6 @@
         "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
         "line_start": 6,
         "line_end": 6
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::alpha -> crate::shared::Help; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/bin/alpha.rs",
-        "line_start": 4,
-        "line_end": 4
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api -> crate::models::User; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
-        "line_start": 18,
-        "line_end": 18
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api -> crate::routes::Router; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
-        "line_start": 20,
-        "line_end": 20
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api -> crate::services::Worker; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
-        "line_start": 22,
-        "line_end": 22
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api -> core::models; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
-        "line_start": 23,
-        "line_end": 23
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api -> self::services::Worker; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
-        "line_start": 29,
-        "line_end": 30
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api::models -> crate::services::Worker; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/models.rs",
-        "line_start": 10,
-        "line_end": 10
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api::routes -> crate::models::User; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/routes.rs",
-        "line_start": 4,
-        "line_end": 4
-      }
-    },
-    {
-      "severity": "warning",
-      "code": "SCOPE001",
-      "message": "scope collision: api::api::services -> crate::services::deep::Job; unresolved syntactic ownership",
-      "source_span": {
-        "file": "@@WORKSPACE@@/crates/api/src/services.rs",
-        "line_start": 8,
-        "line_end": 8
       }
     }
   ]

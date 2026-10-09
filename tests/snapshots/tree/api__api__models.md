@@ -15,6 +15,7 @@ source: crates/api/src/models.rs
 ## Depends on
 
 - [[api__api__routes|api::api::routes]]
+- [[api__api__services|api::api::services]]
 ## Used by
 
 - [[api__api|api::api]]

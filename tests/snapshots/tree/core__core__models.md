@@ -17,5 +17,6 @@ source: crates/core/src/models.rs
 - (none)
 ## Used by
 
+- [[api__api|api::api]]
 - [[core__core|core::core]]
 

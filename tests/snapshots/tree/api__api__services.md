@@ -18,5 +18,6 @@ source: crates/api/src/services.rs
 ## Used by
 
 - [[api__api|api::api]]
+- [[api__api__models|api::api::models]]
 - [[api__api__routes|api::api::routes]]
 

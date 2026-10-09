@@ -2,10 +2,10 @@ workspace: @@WORKSPACE@@
 packages: 2
 targets: 4
 modules: 17
-dependencies: 24
+dependencies: 26
 external: 1
 create: 20
 update: 0
 delete: 0
-warnings: 11
+warnings: 2
 status: success

@@ -1,11 +1,2 @@
 warning[CFG001]: conditional compilation detected - graph reflects unexpanded source
 warning[MOD002]: ambiguous module layout: both @@WORKSPACE@@/crates/api/src/qux.rs and @@WORKSPACE@@/crates/api/src/qux/mod.rs exist; using @@WORKSPACE@@/crates/api/src/qux.rs (at crates/api/src/lib.rs:6)
-warning[SCOPE001]: scope collision: api::alpha -> crate::shared::Help; unresolved syntactic ownership (at crates/api/src/bin/alpha.rs:4)
-warning[SCOPE001]: scope collision: api::api -> crate::models::User; unresolved syntactic ownership (at crates/api/src/lib.rs:18)
-warning[SCOPE001]: scope collision: api::api -> crate::routes::Router; unresolved syntactic ownership (at crates/api/src/lib.rs:20)
-warning[SCOPE001]: scope collision: api::api -> crate::services::Worker; unresolved syntactic ownership (at crates/api/src/lib.rs:22)
-warning[SCOPE001]: scope collision: api::api -> core::models; unresolved syntactic ownership (at crates/api/src/lib.rs:23)
-warning[SCOPE001]: scope collision: api::api -> self::services::Worker; unresolved syntactic ownership (at crates/api/src/lib.rs:29)
-warning[SCOPE001]: scope collision: api::api::models -> crate::services::Worker; unresolved syntactic ownership (at crates/api/src/models.rs:10)
-warning[SCOPE001]: scope collision: api::api::routes -> crate::models::User; unresolved syntactic ownership (at crates/api/src/routes.rs:4)
-warning[SCOPE001]: scope collision: api::api::services -> crate::services::deep::Job; unresolved syntactic ownership (at crates/api/src/services.rs:8)
