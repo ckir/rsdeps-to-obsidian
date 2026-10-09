@@ -8,6 +8,8 @@ pub mod diag;
 pub mod domain;
 pub mod graph;
 pub mod ids;
+pub mod manifest;
 pub mod metadata;
 pub mod paths;
+pub mod render;
 pub mod resolver;
