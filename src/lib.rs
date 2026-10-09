@@ -6,3 +6,4 @@ pub const GENERATOR: &str = "cargo-obsidian-graph";
 pub mod config;
 pub mod domain;
 pub mod ids;
+pub mod paths;
