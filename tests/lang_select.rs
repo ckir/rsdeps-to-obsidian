@@ -2,12 +2,11 @@
 //!
 //! `detect_language` scans project files in priority
 //! `Cargo.toml` > `pyproject.toml`/`setup.py` > `package.json` (none → Rust).
-//! `analyzer_for`/`discover_for` resolve the Rust arms live; `discover_for`
-//! resolves the Python arm live (Task 3) while the Python analyzer and the
-//! TypeScript arms return exact placeholder errors that Task 4 replaces.
-//! `run()` on a Rust workspace behaves exactly as before (summary counts
-//! unchanged), and ambiguous autodetect (no explicit flag, >1 project file)
-//! appends one `LANG001` Info diagnostic.
+//! `analyzer_for`/`discover_for` resolve the Rust and Python arms live
+//! (Python analyzer went live in Task 4) while the TypeScript arms return
+//! the exact placeholder error. `run()` on a Rust workspace behaves exactly
+//! as before (summary counts unchanged), and ambiguous autodetect (no
+//! explicit flag, >1 project file) appends one `LANG001` Info diagnostic.
 
 use rsdeps2obsidian::config::{detect_language, resolve_config, CliArgs, Config, Lang};
 use rsdeps2obsidian::{analyzer_for, discover_for, run};
@@ -78,10 +77,10 @@ fn registry_rust_python_ok_typescript_err_exact() {
     );
     // `Box<dyn Analyzer>` is not `Debug`, so assert via let-else rather than
     // `unwrap_err`.
-    let Err(e) = analyzer_for(Lang::Python) else {
-        panic!("Python analyzer must not resolve yet");
-    };
-    assert_eq!(e, "python support not yet implemented");
+    assert!(
+        analyzer_for(Lang::Python).is_ok(),
+        "Python analyzer must resolve (Task 4)"
+    );
     let Err(e) = analyzer_for(Lang::Typescript) else {
         panic!("TypeScript analyzer must not resolve yet");
     };
@@ -231,18 +230,29 @@ fn manifest_path_drives_autodetect_scan_dir() {
 
 #[test]
 fn manifest_path_pyproject_detects_python() {
-    // Detection must return Python for a pyproject manifest even though the
-    // analyzer still rejects it: the exact placeholder error (not a cargo
-    // failure against the cwd) proves the manifest dir was scanned.
+    // Detection must return Python for a pyproject manifest: `run()` now
+    // succeeds through the Python backend (Task 4), and the package name
+    // from the manifest dir proves that dir was scanned (a cwd/Rust scan
+    // would run `cargo metadata` against the pyproject path and fail).
     let pkg = tempfile::TempDir::new().expect("tempdir");
-    touch(pkg.path(), "pyproject.toml");
-    let out = tempfile::TempDir::new().expect("tempdir");
-    let err = run(&manifest_auto_config(
+    std::fs::write(
         pkg.path().join("pyproject.toml"),
-        out.path().join("graph"),
+        "[project]\nname = \"pydemo\"\nversion = \"0.1.0\"\n",
+    )
+    .expect("write pyproject.toml");
+    let out = tempfile::TempDir::new().expect("tempdir");
+    let out_dir = out.path().join("graph");
+    let summary = run(&manifest_auto_config(
+        pkg.path().join("pyproject.toml"),
+        out_dir.clone(),
     ))
-    .expect_err("python backend not yet implemented");
-    assert_eq!(err, "python support not yet implemented");
+    .expect("python backend runs the manifest dir");
+    assert_eq!(summary.packages, 1, "packages: {summary:?}");
+    let graph = read_graph_json(&out_dir);
+    assert!(
+        graph.contains("pydemo"),
+        "must analyze the manifest dir as Python:\n{graph}"
+    );
 }
 
 #[test]

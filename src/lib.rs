@@ -15,6 +15,7 @@ pub mod metadata;
 pub mod paths;
 pub mod render;
 pub mod resolver;
+pub mod resolver_py;
 pub mod ts_parse;
 
 use std::collections::{HashMap, HashSet};
@@ -46,15 +47,15 @@ pub struct RunSummary {
 /// Filename of the machine-readable graph inside the output root.
 pub const GRAPH_FILENAME: &str = "graph.json";
 
-/// Resolve the language backend's [`Analyzer`]. Only the Rust arm is live:
-/// the Python/TypeScript arms return exact placeholder errors that the
-/// language-backend tasks replace with real constructors.
+/// Resolve the language backend's [`Analyzer`]. The Rust and Python arms are
+/// live; the TypeScript arm returns the exact placeholder error that the
+/// TypeScript task replaces with a real constructor.
 pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, String> {
     match lang {
         // `Auto` never reaches here (`run()` resolves it first); treating it
         // as Rust keeps direct callers on the pre-`--lang` behavior.
         config::Lang::Auto | config::Lang::Rust => Ok(Box::new(resolver::SynAnalyzer)),
-        config::Lang::Python => Err("python support not yet implemented".to_string()),
+        config::Lang::Python => Ok(Box::new(resolver_py::PyAnalyzer)),
         config::Lang::Typescript => Err("typescript support not yet implemented".to_string()),
     }
 }
