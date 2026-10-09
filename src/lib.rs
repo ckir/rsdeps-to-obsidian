@@ -120,12 +120,21 @@ pub fn run(config: &config::Config) -> Result<RunSummary, String> {
     }
 
     // Explicit `--lang` overrides autodetect silently; `auto` scans the
-    // workspace input directory (first project file in priority order wins).
+    // manifest's parent dir when `--manifest-path` is set, else the
+    // workspace input dir (first project file in priority order wins).
+    // The LANG001 notice below scans this same dir.
     let explicit = config.lang != config::Lang::Auto;
+    let scan_dir: PathBuf = match &config.manifest_path {
+        Some(manifest) => manifest
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from(".")),
+        None => config.workspace_input.clone(),
+    };
     let lang = if explicit {
         config.lang
     } else {
-        config::detect_language(&config.workspace_input)
+        config::detect_language(&scan_dir)
     };
 
     let discovered = discover_for(lang, config)?;
@@ -156,7 +165,7 @@ pub fn run(config: &config::Config) -> Result<RunSummary, String> {
     // and single-project runs stay silent. Re-sort to keep the §22 total
     // order (Info sorts first, so the notice lands at the head).
     if !explicit {
-        if let Some(notice) = lang_multi_notice(&config.workspace_input, lang) {
+        if let Some(notice) = lang_multi_notice(&scan_dir, lang) {
             graph.diagnostics.push(notice);
             diag::sort_diagnostics(&mut graph.diagnostics);
         }

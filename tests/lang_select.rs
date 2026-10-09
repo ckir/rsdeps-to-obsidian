@@ -175,3 +175,113 @@ fn lang001_notice_only_on_ambiguous_autodetect() {
         "single project file must be silent"
     );
 }
+
+fn manifest_auto_config(manifest: PathBuf, output: PathBuf) -> Config {
+    // No workspace positional: `resolve_config` leaves `workspace_input` as
+    // "." (the caller's cwd), exactly like the real
+    // `--manifest-path <manifest>` invocation.
+    let args = CliArgs {
+        workspace: None,
+        manifest_path: Some(manifest),
+        output: Some(output),
+        clean: false,
+        dry_run: false,
+        external: false,
+        verbose: false,
+        lang: Lang::Auto,
+    };
+    resolve_config(&args, Path::new("/")).expect("config resolves")
+}
+
+fn write_tiny_package(dir: &Path) {
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"tiny\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    )
+    .expect("write Cargo.toml");
+    std::fs::create_dir(dir.join("src")).expect("mkdir src");
+    std::fs::write(dir.join("src/main.rs"), "fn main() {}\n").expect("write main");
+}
+
+#[test]
+fn manifest_path_drives_autodetect_scan_dir() {
+    // Manifest dir holds Cargo.toml + a decoy package.json; the workspace
+    // input is the bare default (cwd-dependent), so only the manifest dir
+    // can explain a Rust success plus a LANG001 naming package.json.
+    let pkg = tempfile::TempDir::new().expect("tempdir");
+    write_tiny_package(pkg.path());
+    touch(pkg.path(), "package.json");
+    let out = tempfile::TempDir::new().expect("tempdir");
+    let out_dir = out.path().join("graph");
+    let summary = run(&manifest_auto_config(
+        pkg.path().join("Cargo.toml"),
+        out_dir.clone(),
+    ))
+    .expect("manifest-dir Rust project runs");
+    assert_eq!(summary.packages, 1, "packages: {summary:?}");
+    let graph = read_graph_json(&out_dir);
+    assert!(
+        graph.contains(
+            "multiple project files detected; analyzing Cargo.toml (rust), ignoring: package.json"
+        ),
+        "LANG001 must scan the manifest dir:\n{graph}"
+    );
+}
+
+#[test]
+fn manifest_path_pyproject_detects_python() {
+    // Detection must return Python for a pyproject manifest even though the
+    // registry still rejects it: the exact placeholder error (not a cargo
+    // failure against the cwd) proves the manifest dir was scanned.
+    let pkg = tempfile::TempDir::new().expect("tempdir");
+    touch(pkg.path(), "pyproject.toml");
+    let out = tempfile::TempDir::new().expect("tempdir");
+    let err = run(&manifest_auto_config(
+        pkg.path().join("pyproject.toml"),
+        out.path().join("graph"),
+    ))
+    .expect_err("python backend not yet implemented");
+    assert_eq!(err, "python support not yet implemented");
+}
+
+#[test]
+fn manifest_parent_wins_over_workspace_input() {
+    // `resolve_config` forbids workspace+manifest_path together, so build
+    // this Config literally: `run()` must still scan the manifest's parent
+    // (Rust success), not the TypeScript workspace input.
+    let ws = tempfile::TempDir::new().expect("tempdir");
+    touch(ws.path(), "package.json");
+    let pkg = tempfile::TempDir::new().expect("tempdir");
+    write_tiny_package(pkg.path());
+    let out = tempfile::TempDir::new().expect("tempdir");
+    let cfg = Config {
+        workspace_input: ws.path().to_path_buf(),
+        manifest_path: Some(pkg.path().join("Cargo.toml")),
+        output_raw: out.path().join("graph"),
+        clean: false,
+        dry_run: false,
+        external: false,
+        verbose: false,
+        lang: Lang::Auto,
+    };
+    let summary = run(&cfg).expect("manifest parent (Rust) wins");
+    assert_eq!(summary.packages, 1, "packages: {summary:?}");
+}
+
+#[test]
+fn lang_flag_single_value_and_rejects_repeats() {
+    use clap::Parser;
+    // Default is auto.
+    let args = CliArgs::try_parse_from(["rsdeps2obsidian"]).expect("no-flag parses");
+    assert_eq!(args.lang, Lang::Auto);
+    // Single value maps to the variant.
+    let args = CliArgs::try_parse_from(["rsdeps2obsidian", "--lang", "python"])
+        .expect("single --lang parses");
+    assert_eq!(args.lang, Lang::Python);
+    // Repeats fail closed (single value enforced); assert only that it
+    // errors, not clap's message text.
+    assert!(
+        CliArgs::try_parse_from(["rsdeps2obsidian", "--lang", "rust", "--lang", "python"]).is_err(),
+        "repeated --lang must error"
+    );
+}

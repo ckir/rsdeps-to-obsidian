@@ -28,7 +28,7 @@ fn note(name: &str, body_marker: &str) -> RenderedFile {
     RenderedFile {
         rel_path: name.to_string(),
         content: format!(
-            "---\ngraph_type: rust-module\nprotocol_version: 1\nspec_version: 0.4.0\nschema_version: 3\ngenerator: cargo-obsidian-graph\nmodule_id: {body_marker}\n---\n\n# {body_marker}\n"
+            "---\ngraph_type: rust-module\nprotocol_version: 1\nspec_version: {SPEC_VERSION}\nschema_version: 3\ngenerator: cargo-obsidian-graph\nmodule_id: {body_marker}\n---\n\n# {body_marker}\n"
         ),
     }
 }
@@ -236,7 +236,7 @@ fn orphans_reported_never_deleted() {
     let root = test_root("orphans");
     fs::write(
         root.join("orphan.md"),
-        "---\ngraph_type: rust-module\nprotocol_version: 1\nspec_version: 0.4.0\nschema_version: 3\ngenerator: cargo-obsidian-graph\n---\n",
+        format!("---\ngraph_type: rust-module\nprotocol_version: 1\nspec_version: {SPEC_VERSION}\nschema_version: 3\ngenerator: cargo-obsidian-graph\n---\n"),
     )
     .unwrap();
     fs::write(root.join("plain.md"), "no marker here\n").unwrap();
