@@ -1,4 +1,5 @@
 use rsdeps2obsidian::config::Config;
+use rsdeps2obsidian::config::Lang;
 use rsdeps2obsidian::metadata::discover;
 use std::path::PathBuf;
 
@@ -11,6 +12,7 @@ fn fixture_config(workspace: &str) -> Config {
         dry_run: false,
         external: false,
         verbose: false,
+        lang: Lang::Auto,
     }
 }
 

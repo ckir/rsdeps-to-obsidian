@@ -4,6 +4,7 @@ use rsdeps2obsidian::commit::{clean, commit, compute_plan, detect_orphans, MANIF
 use rsdeps2obsidian::manifest::{read_manifest, Manifest};
 use rsdeps2obsidian::paths::resolve_output_root;
 use rsdeps2obsidian::render::RenderedFile;
+use rsdeps2obsidian::SPEC_VERSION;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -37,7 +38,7 @@ fn manifest_for(files: &[&str]) -> Manifest {
     generated_files.sort();
     Manifest {
         protocol_version: 1,
-        spec_version: "0.4.0".to_string(),
+        spec_version: SPEC_VERSION.to_string(),
         schema_version: 3,
         generator: "cargo-obsidian-graph".to_string(),
         generated_files,

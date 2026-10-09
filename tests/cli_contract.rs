@@ -1,4 +1,4 @@
-use rsdeps2obsidian::config::{resolve_config, CliArgs};
+use rsdeps2obsidian::config::{resolve_config, CliArgs, Lang};
 use rsdeps2obsidian::{GENERATOR, PROTOCOL_VERSION, SCHEMA_VERSION, SPEC_VERSION};
 use std::path::{Path, PathBuf};
 
@@ -11,6 +11,7 @@ fn empty_args() -> CliArgs {
         dry_run: false,
         external: false,
         verbose: false,
+        lang: Lang::Auto,
     }
 }
 
@@ -48,9 +49,9 @@ fn relative_output_resolves_against_cwd_not_workspace() {
 }
 
 #[test]
-fn handshake_constants_are_v04() {
+fn handshake_constants_are_v05() {
     assert_eq!(PROTOCOL_VERSION, 1);
-    assert_eq!(SPEC_VERSION, "0.4.0");
+    assert_eq!(SPEC_VERSION, "0.5.0");
     assert_eq!(SCHEMA_VERSION, 3);
     assert_eq!(GENERATOR, "cargo-obsidian-graph");
 }

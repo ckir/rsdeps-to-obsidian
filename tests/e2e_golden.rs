@@ -18,7 +18,7 @@
 //! `RSDEPS_UPDATE_SNAPSHOTS=1 cargo test --test e2e_golden -- --test-threads=1`
 //! (once, eyeball the diff for spec conformance, then lock).
 
-use rsdeps2obsidian::config::{resolve_config, CliArgs, Config};
+use rsdeps2obsidian::config::{resolve_config, CliArgs, Config, Lang};
 use rsdeps2obsidian::run;
 use std::collections::BTreeMap;
 use std::fs;
@@ -51,6 +51,7 @@ fn e2e_config(output: &Path) -> Config {
         dry_run: false,
         external: true,
         verbose: false,
+        lang: Lang::Auto,
     };
     // Absolute --output resolves identically under any cwd.
     resolve_config(&args, Path::new("/")).expect("e2e config resolves")
@@ -282,6 +283,7 @@ fn clean_path_requires_valid_manifest() {
         dry_run,
         external: true,
         verbose: false,
+        lang: Lang::Auto,
     };
 
     // Missing manifest: report + zero deletes (Ok), tree untouched.

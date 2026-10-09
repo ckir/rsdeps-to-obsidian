@@ -3,7 +3,7 @@
 //! * [`render_all`] emits one module note per module, one external note per
 //!   distinct external crate (only when `external` is set), and the
 //!   `index.md` root note. Every note carries the handshake
-//!   (`protocol_version` 1, `spec_version` 0.4.0, `schema_version` 3,
+//!   (`protocol_version` 1, `spec_version` 0.5.0, `schema_version` 3,
 //!   `generator` cargo-obsidian-graph). Frontmatter field order is fixed:
 //!   `graph_type, protocol_version, spec_version, schema_version, generator,
 //!   module_id, target_id, package_id, [external_crate_id], [source]`.

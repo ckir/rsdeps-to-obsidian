@@ -1,6 +1,38 @@
 use clap::Parser;
 use std::path::{Component, Path, PathBuf};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum Lang {
+    Auto,
+    Rust,
+    Python,
+    Typescript,
+}
+
+impl std::fmt::Display for Lang {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Lang::Auto => write!(f, "auto"),
+            Lang::Rust => write!(f, "rust"),
+            Lang::Python => write!(f, "python"),
+            Lang::Typescript => write!(f, "typescript"),
+        }
+    }
+}
+
+impl Lang {
+    /// Lowercase language name for diagnostics (`auto` never reaches output:
+    /// `run()` resolves it before rendering).
+    pub fn name(self) -> &'static str {
+        match self {
+            Lang::Auto => "auto",
+            Lang::Rust => "rust",
+            Lang::Python => "python",
+            Lang::Typescript => "typescript",
+        }
+    }
+}
+
 #[derive(Debug, Parser)]
 #[command(
     name = "rsdeps2obsidian",
@@ -28,6 +60,11 @@ pub struct CliArgs {
 
     #[arg(long = "verbose")]
     pub verbose: bool,
+
+    /// Language backend: an explicit value overrides autodetect silently;
+    /// `auto` (default) scans the workspace for project files.
+    #[arg(long, value_enum, default_value_t = Lang::Auto)]
+    pub lang: Lang,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +76,7 @@ pub struct Config {
     pub dry_run: bool,
     pub external: bool,
     pub verbose: bool,
+    pub lang: Lang,
 }
 
 fn normalize_absolute(path: &Path) -> PathBuf {
@@ -79,7 +117,37 @@ pub fn resolve_config(args: &CliArgs, cwd: &Path) -> Result<Config, String> {
         dry_run: args.dry_run,
         external: args.external,
         verbose: args.verbose,
+        lang: args.lang,
     })
+}
+
+/// Project files that drive language autodetect, in priority order:
+/// `Cargo.toml` > `pyproject.toml`/`setup.py` > `package.json`.
+const PROJECT_FILES: [&str; 4] = ["Cargo.toml", "pyproject.toml", "setup.py", "package.json"];
+
+/// Project files present directly under `dir`, in [`PROJECT_FILES`] priority
+/// order. A directory entry that cannot be read (or `dir` itself missing)
+/// simply yields no entry; detection never fails.
+pub(crate) fn project_files_present(dir: &Path) -> Vec<&'static str> {
+    PROJECT_FILES
+        .iter()
+        .copied()
+        .filter(|name| dir.join(name).is_file())
+        .collect()
+}
+
+/// Autodetect the language backend for `dir`: first present project file in
+/// priority order wins (`pyproject.toml` and `setup.py` both mean Python);
+/// a directory with no project file defaults to Rust.
+pub fn detect_language(dir: &Path) -> Lang {
+    match project_files_present(dir).as_slice() {
+        [] => Lang::Rust,
+        [first, ..] => match *first {
+            "Cargo.toml" => Lang::Rust,
+            "pyproject.toml" | "setup.py" => Lang::Python,
+            _ => Lang::Typescript,
+        },
+    }
 }
 
 #[cfg(test)]
@@ -96,6 +164,7 @@ mod tests {
             dry_run: false,
             external: false,
             verbose: false,
+            lang: Lang::Auto,
         };
         let cfg = resolve_config(&args, Path::new("/work")).unwrap();
         assert_eq!(cfg.output_raw, PathBuf::from("/v/graph"));

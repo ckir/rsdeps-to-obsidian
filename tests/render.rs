@@ -155,7 +155,7 @@ fn every_note_carries_generator_marker_and_handshake() {
         for key in [
             "generator: cargo-obsidian-graph",
             "protocol_version: 1",
-            "0.4.0",
+            "0.5.0",
             "schema_version: 3",
         ] {
             assert!(
@@ -216,7 +216,7 @@ fn manifest_shape_and_determinism() {
 
     let manifest = build_manifest(&first, &graph);
     assert_eq!(manifest.protocol_version, 1);
-    assert_eq!(manifest.spec_version, "0.4.0");
+    assert_eq!(manifest.spec_version, "0.5.0");
     assert_eq!(manifest.schema_version, 3);
     assert_eq!(manifest.generator, "cargo-obsidian-graph");
     let mut sorted = manifest.generated_files.clone();

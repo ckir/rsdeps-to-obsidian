@@ -1,5 +1,5 @@
 pub const PROTOCOL_VERSION: u32 = 1;
-pub const SPEC_VERSION: &str = "0.4.0";
+pub const SPEC_VERSION: &str = "0.5.0";
 pub const SCHEMA_VERSION: u32 = 3;
 pub const GENERATOR: &str = "cargo-obsidian-graph";
 
@@ -45,6 +45,54 @@ pub struct RunSummary {
 /// Filename of the machine-readable graph inside the output root.
 pub const GRAPH_FILENAME: &str = "graph.json";
 
+/// Resolve the language backend's [`Analyzer`]. Only the Rust arm is live:
+/// the Python/TypeScript arms return exact placeholder errors that the
+/// language-backend tasks replace with real constructors.
+pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, String> {
+    match lang {
+        // `Auto` never reaches here (`run()` resolves it first); treating it
+        // as Rust keeps direct callers on the pre-`--lang` behavior.
+        config::Lang::Auto | config::Lang::Rust => Ok(Box::new(resolver::SynAnalyzer)),
+        config::Lang::Python => Err("python support not yet implemented".to_string()),
+        config::Lang::Typescript => Err("typescript support not yet implemented".to_string()),
+    }
+}
+
+/// Run project discovery for `lang`. Only the Rust arm is live; the
+/// Python/TypeScript arms return the same exact placeholder errors as
+/// [`analyzer_for`].
+pub fn discover_for(
+    lang: config::Lang,
+    config: &config::Config,
+) -> Result<metadata::DiscoveredWorkspace, String> {
+    match lang {
+        config::Lang::Auto | config::Lang::Rust => metadata::discover(config),
+        config::Lang::Python => Err("python support not yet implemented".to_string()),
+        config::Lang::Typescript => Err("typescript support not yet implemented".to_string()),
+    }
+}
+
+/// The `LANG001` Info diagnostic for ambiguous autodetect: no explicit
+/// `--lang` and more than one project file present. `None` for explicit
+/// flags and single-project (or bare) directories, which stay silent.
+fn lang_multi_notice(dir: &std::path::Path, lang: config::Lang) -> Option<domain::Diagnostic> {
+    let present = config::project_files_present(dir);
+    if present.len() < 2 {
+        return None;
+    }
+    let (chosen, others) = present.split_first().expect("len >= 2 checked");
+    Some(domain::Diagnostic {
+        severity: domain::DiagnosticSeverity::Info,
+        code: "LANG001".to_string(),
+        message: format!(
+            "multiple project files detected; analyzing {chosen} ({}), ignoring: {}",
+            lang.name(),
+            others.join(", ")
+        ),
+        source_span: None,
+    })
+}
+
 /// Run the full pipeline: resolve the output root → discover the workspace →
 /// analyze → sort → render Markdown + JSON → diff against the previous
 /// manifest → report orphans and diagnostics on stderr → commit (or compute
@@ -71,13 +119,23 @@ pub fn run(config: &config::Config) -> Result<RunSummary, String> {
         return run_clean(config, &output_root);
     }
 
-    let discovered = metadata::discover(config)?;
+    // Explicit `--lang` overrides autodetect silently; `auto` scans the
+    // workspace input directory (first project file in priority order wins).
+    let explicit = config.lang != config::Lang::Auto;
+    let lang = if explicit {
+        config.lang
+    } else {
+        config::detect_language(&config.workspace_input)
+    };
+
+    let discovered = discover_for(lang, config)?;
+    let analyzer = analyzer_for(lang)?;
     let input = resolver::AnalysisInput {
         workspace_root: discovered.root.clone(),
         targets: discovered.targets.clone(),
         deps: discovered.external_deps.clone(),
     };
-    let mut graph = resolver::Analyzer::analyze(&resolver::SynAnalyzer, &input)?;
+    let mut graph = analyzer.analyze(&input)?;
 
     // AnalysisInput carries no packages, so analyze() synthesizes placeholder
     // manifest paths; restore the real per-package paths (matched by
@@ -93,6 +151,16 @@ pub fn run(config: &config::Config) -> Result<RunSummary, String> {
         }
     }
     graph::sort_graph(&mut graph);
+
+    // Ambiguous autodetect names the ignored project files; explicit flags
+    // and single-project runs stay silent. Re-sort to keep the §22 total
+    // order (Info sorts first, so the notice lands at the head).
+    if !explicit {
+        if let Some(notice) = lang_multi_notice(&config.workspace_input, lang) {
+            graph.diagnostics.push(notice);
+            diag::sort_diagnostics(&mut graph.diagnostics);
+        }
+    }
 
     let mut rendered = render::render_all(&graph, &discovered.root, config.external);
     rendered.push(render::RenderedFile {

@@ -1,7 +1,7 @@
 //! Manifest build/read/validate (Task 7).
 //!
 //! The manifest shares the handshake envelope (`protocol_version` 1,
-//! `spec_version` "0.4.0", `schema_version` 3, `generator`
+//! `spec_version` "0.5.0", `schema_version` 3, `generator`
 //! cargo-obsidian-graph) and adds `generated_files` (sorted) plus
 //! `module_records` (sorted by `module_id`). [`build_manifest`] recomputes
 //! filenames through [`crate::render::assign_filenames`], the same mapping
