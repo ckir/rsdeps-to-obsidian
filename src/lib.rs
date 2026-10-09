@@ -4,7 +4,9 @@ pub const SCHEMA_VERSION: u32 = 3;
 pub const GENERATOR: &str = "cargo-obsidian-graph";
 
 pub mod config;
+pub mod diag;
 pub mod domain;
+pub mod graph;
 pub mod ids;
 pub mod metadata;
 pub mod paths;
