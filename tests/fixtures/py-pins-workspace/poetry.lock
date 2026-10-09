@@ -1,0 +1,9 @@
+[[package]]
+name = "gunicorn"
+version = "21.2.0"
+description = "WSGI server"
+
+[[package]]
+name = "requests"
+version = "2.31.0"
+description = "HTTP library"

@@ -6,6 +6,7 @@ pub const GENERATOR: &str = "cargo-obsidian-graph";
 pub mod commit;
 pub mod config;
 pub mod diag;
+pub mod discovery_py;
 pub mod domain;
 pub mod graph;
 pub mod ids;
@@ -58,8 +59,8 @@ pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, S
     }
 }
 
-/// Run project discovery for `lang`. Only the Rust arm is live; the
-/// Python/TypeScript arms return the same exact placeholder errors as
+/// Run project discovery for `lang`. The Rust and Python arms are live; the
+/// TypeScript arm returns the same exact placeholder error as
 /// [`analyzer_for`].
 pub fn discover_for(
     lang: config::Lang,
@@ -67,7 +68,7 @@ pub fn discover_for(
 ) -> Result<metadata::DiscoveredWorkspace, String> {
     match lang {
         config::Lang::Auto | config::Lang::Rust => metadata::discover(config),
-        config::Lang::Python => Err("python support not yet implemented".to_string()),
+        config::Lang::Python => discovery_py::discover_py(config),
         config::Lang::Typescript => Err("typescript support not yet implemented".to_string()),
     }
 }

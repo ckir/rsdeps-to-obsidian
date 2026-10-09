@@ -2,8 +2,9 @@
 //!
 //! `detect_language` scans project files in priority
 //! `Cargo.toml` > `pyproject.toml`/`setup.py` > `package.json` (none → Rust).
-//! `analyzer_for`/`discover_for` resolve the Rust arms live; the Python and
-//! TypeScript arms return exact placeholder errors that Tasks 3–4 replace.
+//! `analyzer_for`/`discover_for` resolve the Rust arms live; `discover_for`
+//! resolves the Python arm live (Task 3) while the Python analyzer and the
+//! TypeScript arms return exact placeholder errors that Task 4 replaces.
 //! `run()` on a Rust workspace behaves exactly as before (summary counts
 //! unchanged), and ambiguous autodetect (no explicit flag, >1 project file)
 //! appends one `LANG001` Info diagnostic.
@@ -70,7 +71,7 @@ fn detect_priority_and_default() {
 }
 
 #[test]
-fn registry_rust_ok_others_err_exact() {
+fn registry_rust_python_ok_typescript_err_exact() {
     assert!(
         analyzer_for(Lang::Rust).is_ok(),
         "Rust analyzer must resolve"
@@ -93,9 +94,9 @@ fn registry_rust_ok_others_err_exact() {
         discover_for(Lang::Rust, &cfg).is_ok(),
         "Rust discovery must resolve"
     );
-    assert_eq!(
-        discover_for(Lang::Python, &cfg).unwrap_err(),
-        "python support not yet implemented"
+    assert!(
+        discover_for(Lang::Python, &cfg).is_ok(),
+        "Python discovery must resolve (file-only, no project file needed)"
     );
     assert_eq!(
         discover_for(Lang::Typescript, &cfg).unwrap_err(),
@@ -231,7 +232,7 @@ fn manifest_path_drives_autodetect_scan_dir() {
 #[test]
 fn manifest_path_pyproject_detects_python() {
     // Detection must return Python for a pyproject manifest even though the
-    // registry still rejects it: the exact placeholder error (not a cargo
+    // analyzer still rejects it: the exact placeholder error (not a cargo
     // failure against the cwd) proves the manifest dir was scanned.
     let pkg = tempfile::TempDir::new().expect("tempdir");
     touch(pkg.path(), "pyproject.toml");

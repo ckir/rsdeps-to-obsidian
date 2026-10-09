@@ -1,0 +1,7 @@
+[project]
+name = "demo"
+version = "0.1.0"
+
+[project.scripts]
+app = "web.cli:main"
+ghost = "nosuch.mod:main"

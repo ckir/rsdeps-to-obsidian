@@ -1,0 +1,11 @@
+# comment line
+requests==2.31.0
+flask>=3.0
+django==4.2.7; python_version > "3.8"
+urllib3[secure]==1.26.16
+pytest==7.4.0  # inline comment
+-r requirements-dev.txt
+-e .
+condapy; python_version>"3.8"
+
+unpinned
