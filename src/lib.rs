@@ -14,6 +14,7 @@ pub mod metadata;
 pub mod paths;
 pub mod render;
 pub mod resolver;
+pub mod ts_parse;
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
