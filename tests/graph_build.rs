@@ -140,7 +140,9 @@ fn ambiguous_ownership_warns_scope001_without_edge() {
     let dir = tmpdir("ambiguous");
     write_file(&dir.join("lib.rs"), "mod foo;\nuse foo::bar;\n");
     write_file(&dir.join("foo.rs"), "mod bar;\n");
-    write_file(&dir.join("bar.rs"), "// leaf\n");
+    // rustc 2018 rule (Task 5 round 2): children of file-module `foo.rs`
+    // live under the `foo/` subdirectory.
+    write_file(&dir.join("foo/bar.rs"), "// leaf\n");
 
     let target = lib_target("t6c", "t6c", dir.join("lib.rs"));
     let deps = vec![ExternalDep {
@@ -163,6 +165,39 @@ fn ambiguous_ownership_warns_scope001_without_edge() {
     assert_eq!(edge_kind(&graph.dependencies, "t6c::t6c", "t6c::t6c::foo::bar"), None);
     // The `mod` containment edges survive.
     assert_eq!(graph.dependencies.len(), 2);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn multiversion_dep_warns_exact_scope001_text() {
+    // Two resolved versions share the `serde` name, so `use serde::de` is
+    // ambiguous: SCOPE001 with the single mandated text, and no edge.
+    let dir = tmpdir("multiversion");
+    write_file(&dir.join("lib.rs"), "use serde::de;\n");
+
+    let target = lib_target("t6f", "t6f", dir.join("lib.rs"));
+    let deps = vec![
+        ExternalDep {
+            name: "serde".to_string(),
+            version: "1.0.190".to_string(),
+        },
+        ExternalDep {
+            name: "serde".to_string(),
+            version: "1.0.210".to_string(),
+        },
+    ];
+    let graph = SynAnalyzer.analyze(&input(&dir, target, deps)).unwrap();
+
+    let scope: Vec<&Diagnostic> =
+        graph.diagnostics.iter().filter(|d| d.code == "SCOPE001").collect();
+    assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
+    assert_eq!(scope[0].severity, DiagnosticSeverity::Warning);
+    assert_eq!(
+        scope[0].message,
+        "scope collision: t6f::t6f -> serde::de; unresolved syntactic ownership"
+    );
+    assert!(graph.dependencies.is_empty(), "{:?}", graph.dependencies);
 
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -724,15 +724,11 @@ fn resolve_use(
                         None => Resolution::Edge(DependencyTarget::External(external)),
                     }
                 }
-                Some(versions) => {
-                    let list = versions
-                        .iter()
-                        .map(|d| format!("{}@{}", d.name, d.version))
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    unresolved(Some(format!(
-                        "ambiguous external versions for `{first}`: {list}"
-                    )))
+                Some(_) => {
+                    // Several resolved versions share this name: ownership is
+                    // ambiguous, so the single mandated SCOPE001 text applies
+                    // (no edge), exactly as for any other unresolvable path.
+                    unresolved(None)
                 }
             }
         }
