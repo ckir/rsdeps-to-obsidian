@@ -3,6 +3,7 @@ pub const SPEC_VERSION: &str = "0.4.0";
 pub const SCHEMA_VERSION: u32 = 3;
 pub const GENERATOR: &str = "cargo-obsidian-graph";
 
+pub mod commit;
 pub mod config;
 pub mod diag;
 pub mod domain;
