@@ -27,7 +27,17 @@
 //!   parent).
 //! * A first segment matching neither the tree nor the stdlib list resolves
 //!   through `AnalysisInput.deps`: exactly one pin → `External`, several →
-//!   `SCOPE001` (mirrors the Rust multi-version rule), none → `EXT001`.
+//!   `SCOPE001` (mirrors the Rust multi-version rule), none → `EXT001` —
+//!   unless the import is relative (`level > 0`), which can never name an
+//!   external and is always `SCOPE001` on a miss.
+//! * An absolute import whose first segment is the owning target's own
+//!   package name strips it — when the owning tree itself misses — and
+//!   longest-prefix-resolves the remainder against the package's `Lib`
+//!   trees: exactly one match → `Internal`, zero or several → `SCOPE001`
+//!   (own namespace is never external). Trying the owning tree first keeps
+//!   verbatim paths primary (a nested tree may contain the full path) and
+//!   can never shadow: the arm only runs on a total owning miss. No `Lib`
+//!   target in the package falls through to the rule above.
 //! * Stdlib first segments are silently skipped (no node, no diagnostic).
 //! * `TYPE_CHECKING`-guarded imports are plain `import_statement` nodes, so
 //!   they resolve normally by construction.
@@ -38,7 +48,7 @@
 
 use crate::domain::{
     Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
-    SourceSpan, Target, WorkspaceGraph,
+    SourceSpan, Target, TargetKind, WorkspaceGraph,
 };
 use crate::graph::{dedup_dependencies, sort_graph};
 use crate::ids::{make_external_id, make_module_id, ModuleId, TargetId};
@@ -430,6 +440,9 @@ struct PyUse {
     /// path edges, anything shorter is `SCOPE001`. Plain `import`s take the
     /// longest-prefix edge instead (amendment-A rule).
     item_ctx: bool,
+    /// Relative-import dot count (`0` = absolute). Relative misses are
+    /// `SCOPE001`, never `EXT001`: a relative import cannot name an external.
+    level: usize,
     /// Captured `as` alias; diagnostics-only, never mints IDs (mirrors Rust).
     alias: Option<String>,
     span: Option<SourceSpan>,
@@ -768,6 +781,7 @@ fn extract_imports(
                     path: module.join("."),
                     dotted: anchor(importer, is_pkg, 0, &module, None),
                     item_ctx: false,
+                    level: 0,
                     alias: None,
                     span: Some(use_span(path, stmt, &plain)),
                 });
@@ -780,6 +794,7 @@ fn extract_imports(
                         path: module.join("."),
                         dotted: anchor(importer, is_pkg, 0, &module, None),
                         item_ctx: false,
+                        level: 0,
                         alias: Some(alias_node.text.clone()),
                         span: Some(use_span(path, stmt, dotted_node)),
                     });
@@ -808,6 +823,7 @@ fn extract_imports(
                     path: format!("{dots_prefix}{item}"),
                     dotted: anchor(importer, is_pkg, level, &module, Some(&plain.text)),
                     item_ctx: true,
+                    level,
                     alias: None,
                     span: Some(use_span(path, stmt, &plain)),
                 });
@@ -824,6 +840,7 @@ fn extract_imports(
                         path: format!("{dots_prefix}{item}"),
                         dotted: anchor(importer, is_pkg, level, &module, Some(&item_node.text)),
                         item_ctx: true,
+                        level,
                         alias: Some(alias_node.text.clone()),
                         span: Some(use_span(path, stmt, item_node)),
                     });
@@ -836,6 +853,7 @@ fn extract_imports(
                     path: format!("{dots_prefix}{rest}"),
                     dotted: anchor(importer, is_pkg, level, &module, None),
                     item_ctx: true,
+                    level,
                     alias: None,
                     span: Some(use_span(path, stmt, star)),
                 });
@@ -871,7 +889,9 @@ fn longest_prefix(
 
 fn resolve_use(
     raw: &PyUse,
+    pkg: &str,
     tree: &HashMap<Vec<String>, ModuleId>,
+    lib_trees: &[&HashMap<Vec<String>, ModuleId>],
     deps_by_name: &HashMap<&str, Vec<&crate::metadata::ExternalDep>>,
 ) -> Resolution {
     // Aliases are diagnostics-only and never mint IDs.
@@ -880,6 +900,31 @@ fn resolve_use(
         return Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span));
     }
     let (hit, len) = longest_prefix(tree, &raw.dotted);
+    // Own-package absolute imports strip the package segment and resolve
+    // the remainder against the package's `Lib` trees — but only on a total
+    // owning-tree miss, so verbatim paths (and amendment-A strict matches)
+    // stay primary and a `Bin`-only root can never shadow: `longest_prefix`
+    // never tries length 0, so a root-only tree matches no real remainder.
+    // Exactly one `Lib` match → `Internal`; zero or several → `SCOPE001`
+    // (own namespace is never external).
+    if hit.is_none() && raw.level == 0 && raw.dotted[0] == pkg && !lib_trees.is_empty() {
+        let remainder = &raw.dotted[1..];
+        let mut hits: Vec<ModuleId> = Vec::new();
+        for lib in lib_trees {
+            let hit = if remainder.is_empty() {
+                lib.get(&Vec::new()).cloned()
+            } else {
+                longest_prefix(lib, remainder).0
+            };
+            if let Some(id) = hit {
+                hits.push(id);
+            }
+        }
+        if hits.len() == 1 {
+            return Resolution::Edge(DependencyTarget::Internal(hits.swap_remove(0)));
+        }
+        return Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span));
+    }
     match hit {
         Some(id) if len == raw.dotted.len() => Resolution::Edge(DependencyTarget::Internal(id)),
         Some(id) if !raw.item_ctx => Resolution::Edge(DependencyTarget::Internal(id)),
@@ -900,6 +945,11 @@ fn resolve_use(
                 // Several pins share this name: ownership is ambiguous, so
                 // the single SCOPE001 text applies (mirrors Rust), no edge.
                 Some(_) => Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span)),
+                // A relative import can never name an external: its miss is
+                // an ownership failure (SCOPE001), not a pin failure.
+                None if raw.level > 0 => {
+                    Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span))
+                }
                 None => Resolution::Unresolved(ext_diag(&raw.from, &raw.path, &raw.span)),
             }
         }
@@ -920,8 +970,8 @@ impl Analyzer for PyAnalyzer {
         let mut owner_to_target: HashMap<ModuleId, TargetId> = HashMap::new();
         for target in &input.targets {
             let (entries, mut diags) = match target.kind {
-                crate::domain::TargetKind::Lib => walk_lib(target),
-                crate::domain::TargetKind::Bin => walk_bin(target),
+                TargetKind::Lib => walk_lib(target),
+                TargetKind::Bin => walk_bin(target),
             };
             diagnostics.append(&mut diags);
             let mut tree: HashMap<Vec<String>, ModuleId> = HashMap::new();
@@ -998,7 +1048,8 @@ impl Analyzer for PyAnalyzer {
             });
         }
 
-        // 4. Resolve every `PyUse` against its owning target's tree.
+        // 4. Resolve every `PyUse` against its owning target's tree, plus
+        // the package's `Lib` trees for the own-package absolute arm.
         // No CFG001 walk: the single-run conditional-compilation
         // diagnostic is Rust-only per spec §2, so `TYPE_CHECKING` imports
         // above already resolved normally.
@@ -1011,7 +1062,17 @@ impl Analyzer for PyAnalyzer {
                 diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
                 continue;
             };
-            match resolve_use(raw, tree, &deps_by_name) {
+            let Some(owner) = input.targets.iter().find(|t| &t.id == target_id) else {
+                diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
+                continue;
+            };
+            let lib_trees: Vec<&HashMap<Vec<String>, ModuleId>> = input
+                .targets
+                .iter()
+                .filter(|t| t.kind == TargetKind::Lib && t.package_id == owner.package_id)
+                .filter_map(|t| trees.get(&t.id))
+                .collect();
+            match resolve_use(raw, &owner.package_id.0, tree, &lib_trees, &deps_by_name) {
                 Resolution::Edge(to) => dependencies.push(Dependency {
                     from: raw.from.clone(),
                     to,

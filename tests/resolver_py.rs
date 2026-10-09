@@ -367,3 +367,149 @@ fn missing_bin_root_fails_closed() {
         graph.dependencies
     );
 }
+
+fn shop_input() -> AnalysisInput {
+    // The `Bin` script lives OUTSIDE the `Lib` import root on purpose: it is
+    // never walked into the `Lib` tree, so every Bin edge below is exactly
+    // one edge (no `Lib`-copy twin).
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/py-resolve");
+    let base = std::fs::canonicalize(&base).unwrap_or(base);
+    AnalysisInput {
+        workspace_root: base.clone(),
+        targets: vec![
+            lib_target("shop", "shop", base.join("shop")),
+            bin_target("shop", "ship", base.join("ship.py")),
+        ],
+        deps: vec![],
+    }
+}
+
+#[test]
+fn own_package_absolute_resolves_against_lib_trees() {
+    let graph = analyze(&shop_input());
+    assert_eq!(
+        module_ids(&graph),
+        vec![
+            "shop::ship",
+            "shop::shop",
+            "shop::shop::models",
+            "shop::shop::sib",
+        ]
+    );
+
+    // Bin `import shop.models` → exactly one Internal edge to the Lib module.
+    let to_models: Vec<_> = graph
+        .dependencies
+        .iter()
+        .filter(|d| {
+            d.from.0 == "shop::ship"
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "shop::shop::models")
+        })
+        .collect();
+    assert_eq!(
+        to_models.len(),
+        1,
+        "one edge to models: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        matches!(to_models[0].kind, DependencyKind::Use),
+        "kind stays Use: {:?}",
+        to_models[0]
+    );
+    // `import shop` (empty remainder) edges to the Lib root itself.
+    assert!(
+        graph.dependencies.iter().any(|d| d.from.0 == "shop::ship"
+            && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "shop::shop")
+            && matches!(d.kind, DependencyKind::Use)),
+        "empty-remainder root edge missing: {:?}",
+        graph.dependencies
+    );
+    // `import shop.ghost` → SCOPE001 exact text, never EXT001, no edge.
+    assert!(
+        graph.diagnostics.iter().any(|d| d.code == "SCOPE001"
+            && d.message
+                == "scope collision: shop::ship -> shop.ghost; unresolved syntactic ownership"),
+        "ghost SCOPE001 missing: {:?}",
+        graph.diagnostics
+    );
+    assert!(
+        graph.diagnostics.iter().all(|d| d.code != "EXT001"),
+        "own namespace is never external: {:?}",
+        graph.diagnostics
+    );
+    // Lib self-prefixed absolute gets the same treatment uniformly.
+    assert!(
+        graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "shop::shop::models"
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "shop::shop::sib")
+                && matches!(d.kind, DependencyKind::Use)),
+        "lib self-prefix edge missing: {:?}",
+        graph.dependencies
+    );
+}
+
+#[test]
+fn relative_miss_is_scope_not_external() {
+    // `from . import nosuchsib` in the Bin script misses everywhere: it is
+    // an ownership failure (SCOPE001), never a pin failure (EXT001).
+    let graph = analyze(&shop_input());
+    assert!(
+        graph.diagnostics.iter().any(|d| d.code == "SCOPE001"
+            && d.message
+                == "scope collision: shop::ship -> .nosuchsib; unresolved syntactic ownership"),
+        "relative-miss SCOPE001 missing: {:?}",
+        graph.diagnostics
+    );
+    assert!(
+        graph
+            .diagnostics
+            .iter()
+            .all(|d| !d.message.contains("nosuchsib") || d.code == "SCOPE001"),
+        "relative miss must never be EXT001: {:?}",
+        graph.diagnostics
+    );
+    assert!(
+        graph
+            .dependencies
+            .iter()
+            .all(|d| d.from.0 != "shop::ship" || !matches!(&d.to, DependencyTarget::External(_))),
+        "relative miss must have no external edge: {:?}",
+        graph.dependencies
+    );
+}
+
+#[test]
+fn nested_owning_tree_match_stays_primary() {
+    // Guard for the miss-only ordering of the own-package arm: in a nested
+    // layout (import root above the package dir) the owning tree already
+    // contains the full `svc.util` path, so `import svc.util` edges
+    // directly instead of stripping to a top-level `util` that is not meant.
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/py-resolve");
+    let base = std::fs::canonicalize(&base).unwrap_or(base);
+    let graph = analyze(&AnalysisInput {
+        workspace_root: base.clone(),
+        targets: vec![lib_target("svc", "svc", base.join("nest"))],
+        deps: vec![],
+    });
+    assert!(
+        graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "svc::svc::svc::core"
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "svc::svc::svc::util")
+                && matches!(d.kind, DependencyKind::Use)),
+        "nested verbatim edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        graph
+            .diagnostics
+            .iter()
+            .all(|d| d.code != "SCOPE001" && d.code != "EXT001"),
+        "no miss diagnostics for a full owning match: {:?}",
+        graph.diagnostics
+    );
+}
