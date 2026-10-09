@@ -168,6 +168,12 @@ fn clean_deletes_only_listed_entries() {
     let before = snapshot(&root);
     let err = read_manifest(&root.join(MANIFEST_FILENAME)).unwrap_err();
     assert!(err.contains("invalid manifest"), "unexpected error: {err}");
+    // The run-level flow propagates that error before commit/clean ever run.
+    let run_outcome: Result<(), String> = match read_manifest(&root.join(MANIFEST_FILENAME)) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    };
+    assert!(run_outcome.unwrap_err().contains("invalid manifest"));
     assert_eq!(snapshot(&root), before, "invalid manifest must cause zero deletes");
 
     // Missing manifest => Ok(empty), zero deletes: the run-level flow maps
@@ -181,6 +187,19 @@ fn clean_deletes_only_listed_entries() {
     };
     assert_eq!(result.unwrap(), Vec::<String>::new());
     assert_eq!(snapshot(&root), before, "missing manifest must delete nothing");
+    // The same empty-deletion semantics through the real `clean`: an empty
+    // manifest deletes nothing and reports nothing.
+    assert_eq!(clean(&root, &manifest_for(&[])).unwrap(), Vec::<String>::new());
+    assert_eq!(snapshot(&root), before, "empty clean must delete nothing");
+    // And through the real `commit`: with no previous manifest, deletions are
+    // disabled, so pre-existing unrelated files survive the commit.
+    let rendered = vec![note("fresh.md", "fresh")];
+    let fresh_manifest = manifest_for(&["fresh.md"]);
+    let plan = commit(&rendered, &fresh_manifest, &root, None, false).unwrap();
+    assert!(plan.delete.is_empty());
+    assert!(root.join("unrelated.md").exists());
+    assert!(root.join("orphan.md").exists());
+    assert!(root.join("fresh.md").exists());
 }
 
 #[test]
@@ -326,4 +345,121 @@ fn compute_plan_partitions_without_io() {
     assert_eq!(plan.create, vec!["b.md".to_string()]);
     assert_eq!(plan.update, vec!["a.md".to_string()]);
     assert_eq!(plan.delete, vec!["stale.md".to_string()]);
+
+    // Doubled desired entries count once (first occurrence wins).
+    let doubled = vec![note("a.md", "a"), note("a.md", "a"), note("b.md", "b")];
+    assert_eq!(compute_plan(&doubled, Some(&prev)), plan);
+}
+
+#[test]
+fn manifest_record_never_clobbered_or_deleted() {
+    // A hostile prev manifest spelling the commit record as `./manifest.json`
+    // must not delete or clobber it; the legitimate stale entry is still
+    // handled normally.
+    let root = test_root("manifest-self");
+    let old = manifest_for(&["stale.md"]);
+    fs::write(
+        root.join(MANIFEST_FILENAME),
+        serde_json::to_string_pretty(&old).unwrap(),
+    )
+    .unwrap();
+    fs::write(root.join("stale.md"), "stale").unwrap();
+    let mut hostile_prev = manifest_for(&["./manifest.json", "stale.md"]);
+    hostile_prev.generated_files.sort();
+    let rendered = vec![note("a.md", "a")];
+    let new = manifest_for(&["a.md"]);
+
+    let plan = commit(&rendered, &new, &root, Some(&hostile_prev), false).unwrap();
+    assert_eq!(plan.delete, vec!["./manifest.json".to_string(), "stale.md".to_string()]);
+    // Commit record intact as the NEW manifest; stale handled normally.
+    assert_eq!(read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(), Some(new));
+    assert!(!root.join("stale.md").exists());
+    assert!(root.join("a.md").exists());
+
+    // `clean` with the same hostile spelling deletes the legit entry only.
+    fs::write(root.join("stale.md"), "stale again").unwrap();
+    let deleted = clean(&root, &hostile_prev).unwrap();
+    assert_eq!(deleted, vec!["stale.md".to_string()]);
+    assert!(!root.join("stale.md").exists());
+    assert_eq!(
+        read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(),
+        Some(manifest_for(&["a.md"])),
+        "clean must leave the commit record untouched"
+    );
+
+    // A rendered file targeting the commit record (either spelling) is
+    // rejected with Err and zero writes — never published-then-clobbered.
+    for spelling in ["manifest.json", "./manifest.json"] {
+        let before = snapshot(&root);
+        let evil = vec![RenderedFile {
+            rel_path: spelling.to_string(),
+            content: "evil content".to_string(),
+        }];
+        let err = commit(&evil, &manifest_for(&[spelling]), &root, None, false).unwrap_err();
+        assert!(err.contains("collides"), "unexpected error: {err}");
+        assert_eq!(snapshot(&root), before, "colliding render must write nothing");
+    }
+    assert_eq!(
+        read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(),
+        Some(manifest_for(&["a.md"]))
+    );
+}
+
+#[test]
+fn manifest_rename_failure_skips_cleanup() {
+    // Ordering proof: force the manifest rename to fail (a non-empty
+    // directory occupies the manifest destination) AFTER Markdown was
+    // staged and published. Cleanup must not run: the stale prev-listed
+    // file still exists.
+    let root = test_root("rename-fail");
+    fs::write(root.join("old.md"), "old").unwrap();
+    fs::write(root.join("stale.md"), "stale").unwrap();
+    let prev = manifest_for(&["old.md", "stale.md"]);
+    fs::create_dir_all(root.join(MANIFEST_FILENAME).join("inner")).unwrap();
+    fs::write(root.join(MANIFEST_FILENAME).join("inner").join("x"), "x").unwrap();
+
+    let rendered = vec![note("old.md", "old-new"), note("new.md", "new")];
+    let new = manifest_for(&["new.md", "old.md"]);
+    let err = commit(&rendered, &new, &root, Some(&prev), false).unwrap_err();
+    assert!(err.contains("cannot publish manifest.json"), "unexpected error: {err}");
+    // Markdown publish succeeded (we got past stage 4) …
+    assert_eq!(fs::read_to_string(root.join("new.md")).unwrap(), note("new.md", "new").content);
+    // … but the stale file was NOT deleted: deletes run only after the
+    // manifest rename.
+    assert!(root.join("stale.md").exists(), "cleanup ran before manifest rename");
+    assert!(root.join(MANIFEST_FILENAME).is_dir());
+}
+
+#[test]
+fn hostile_entries_fail_closed() {
+    // (a) `clean` with a valid Manifest struct containing an escape entry:
+    // Err + zero deletes — the legitimate entry SURVIVES (fail-closed).
+    let base = test_root("hostile");
+    let root = base.join("vault");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(base.join("evil.md"), "sentinel").unwrap();
+    fs::write(root.join("legit.md"), "legit").unwrap();
+    let hostile = manifest_for(&["../evil.md", "legit.md"]);
+    let before = snapshot(&base);
+    let err = clean(&root, &hostile).unwrap_err();
+    assert!(err.contains("clean failed"), "unexpected error: {err}");
+    assert_eq!(snapshot(&base), before, "escape abort must delete nothing");
+    assert!(root.join("legit.md").exists(), "legit entry must survive escape abort");
+    assert_eq!(fs::read_to_string(base.join("evil.md")).unwrap(), "sentinel");
+
+    // (b) `commit` cleanup with a hostile prev: Ok (cleanup-failure-tolerant
+    // per brief), escape target untouched, legitimate stale handled normally.
+    fs::write(root.join("stale.md"), "stale").unwrap();
+    let hostile_prev = manifest_for(&["../evil.md", "stale.md"]);
+    let rendered = vec![note("a.md", "a")];
+    let new = manifest_for(&["a.md"]);
+    let plan = commit(&rendered, &new, &root, Some(&hostile_prev), false).unwrap();
+    assert_eq!(
+        plan.delete,
+        vec!["../evil.md".to_string(), "stale.md".to_string()]
+    );
+    assert_eq!(fs::read_to_string(base.join("evil.md")).unwrap(), "sentinel");
+    assert!(!root.join("stale.md").exists(), "legit stale must be cleaned");
+    assert!(root.join("a.md").exists());
+    assert_eq!(read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(), Some(new));
 }

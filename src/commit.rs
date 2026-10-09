@@ -16,8 +16,10 @@
 //!
 //! Commit-record file: [`MANIFEST_FILENAME`] (`manifest.json`) at the output
 //! root. It is written by [`commit`] after all Markdown renames and is never
-//! deleted by [`commit`] cleanup or [`clean`] (a manifest listing it is
-//! treated as hostile and that entry is skipped).
+//! deleted by [`commit`] cleanup or [`clean`] (destination-compared, so a
+//! manifest listing it under any spelling is treated as hostile and that
+//! entry is skipped). A rendered file colliding with it is rejected with
+//! `Err` and zero writes.
 //!
 //! Warning channel: [`commit`] cleanup failures (missing file, permission
 //! error) keep the `Ok(Plan)` — there is no warnings vector in the return
@@ -79,7 +81,13 @@ pub fn compute_plan(desired: &[RenderedFile], prev: Option<&Manifest>) -> Plan {
         .collect();
     let mut create = Vec::new();
     let mut update = Vec::new();
+    let mut seen_desired = HashSet::new();
     for f in desired {
+        // The renderer emits unique paths; dedupe defensively so a doubled
+        // entry counts once (first occurrence wins).
+        if !seen_desired.insert(f.rel_path.as_str()) {
+            continue;
+        }
         if prev_set.contains(f.rel_path.as_str()) {
             update.push(f.rel_path.clone());
         } else {
@@ -105,6 +113,25 @@ pub fn compute_plan(desired: &[RenderedFile], prev: Option<&Manifest>) -> Plan {
     }
 }
 
+/// Lexically normalize a joined path (drop `.` components) so alternate
+/// spellings of the same destination compare equal. `..` cannot occur: every
+/// compared path passed [`validate_generated_path`], which rejects it (the
+/// pop arm below is dead defense-in-depth).
+fn lexical_normalize(path: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for comp in path.components() {
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            c => out.push(c.as_os_str()),
+        }
+    }
+    out
+}
+
 /// Best-effort `fsync`: durability hint only, never fails the commit
 /// (unsupported on some Windows configurations).
 fn sync_best_effort(file: &std::fs::File) {
@@ -116,7 +143,9 @@ fn sync_best_effort(file: &std::fs::File) {
 /// created). Otherwise: stage temps in the destination dir → flush/fsync →
 /// atomic rename each Markdown → stage/flush/fsync/rename the manifest as the
 /// commit record → then delete obsolete prev-only entries inside the root,
-/// each re-validated; cleanup failures stay `Ok` (see module docs).
+/// each re-validated; cleanup failures stay `Ok` (see module docs). A
+/// rendered entry colliding with the manifest destination is rejected with
+/// `Err` before the first write.
 pub fn commit(
     rendered: &[RenderedFile],
     manifest: &Manifest,
@@ -138,6 +167,18 @@ pub fn commit(
     }
     let manifest_dest = validate_generated_path(output_root, MANIFEST_FILENAME)
         .map_err(|e| format!("commit failed: {e}"))?;
+    let manifest_dest_norm = lexical_normalize(&manifest_dest);
+    // A rendered file targeting the commit record itself (whatever spelling:
+    // `manifest.json`, `./manifest.json`, …) is rejected with zero writes
+    // instead of being published and silently clobbered by the manifest
+    // rename later.
+    for (rel, dest) in &dests {
+        if lexical_normalize(dest) == manifest_dest_norm {
+            return Err(format!(
+                "commit failed: generated file {rel} collides with the commit-record manifest"
+            ));
+        }
+    }
     // Serialize the manifest before touching the tree: a serialization
     // failure must also leave zero effects.
     let manifest_bytes = serde_json::to_string_pretty(manifest)
@@ -207,12 +248,13 @@ pub fn commit(
     // re-validated (prev-manifest content is untrusted); validation or
     // removal failures are swallowed — the commit stays `Ok` and callers
     // surface leftovers via `detect_orphans`. The commit record itself is
-    // never deleted.
+    // never deleted: any entry whose validated destination equals the
+    // manifest destination (whatever spelling) is skipped.
     for rel in &plan.delete {
-        if rel == MANIFEST_FILENAME {
-            continue;
-        }
         if let Ok(dest) = validate_generated_path(output_root, rel) {
+            if lexical_normalize(&dest) == manifest_dest_norm {
+                continue;
+            }
             let _ = std::fs::remove_file(&dest);
         }
     }
@@ -222,25 +264,42 @@ pub fn commit(
 /// Delete exactly the manifest-listed entries inside `output_root`, returning
 /// the sorted names actually removed. Every entry is re-validated for
 /// containment + symlinks before the first delete; any escape aborts with
-/// `Err` and zero deletes. Never touches orphans or unrelated files; never
-/// deletes the commit-record manifest itself. Already-absent entries are
-/// skipped (idempotent: a second run returns empty).
+/// `Err` and zero deletes. Each delete is re-validated again immediately
+/// before unlinking (symmetry with [`commit`]); a deletion I/O failure after
+/// validation passed aborts with `Err` and entries already removed stay
+/// removed — only escape-validation is fail-closed with zero deletes. Never
+/// touches orphans or unrelated files; never deletes the commit-record
+/// manifest itself (destination-compared, so alternate spellings are skipped
+/// too). Already-absent entries are skipped (idempotent: a second run returns
+/// empty).
 pub fn clean(output_root: &Path, manifest: &Manifest) -> Result<Vec<String>, String> {
+    // The commit record itself can never be a delete target, whatever
+    // spelling a hostile manifest uses: compare validated destinations.
+    let manifest_dest_norm =
+        lexical_normalize(&validate_generated_path(output_root, MANIFEST_FILENAME)
+            .map_err(|e| format!("clean failed: {e}"))?);
     // Validate all entries before the first delete: escape → abort, zero
     // effects from this call attributable to the hostile entry.
     let mut dests: Vec<(String, PathBuf)> = Vec::new();
     let mut seen = HashSet::new();
     for rel in &manifest.generated_files {
-        if rel == MANIFEST_FILENAME || !seen.insert(rel.as_str()) {
+        if !seen.insert(rel.as_str()) {
             continue;
         }
         let dest = validate_generated_path(output_root, rel)
             .map_err(|e| format!("clean failed: {e}"))?;
+        if lexical_normalize(&dest) == manifest_dest_norm {
+            continue;
+        }
         dests.push((rel.clone(), dest));
     }
     dests.sort();
     let mut deleted = Vec::new();
-    for (rel, dest) in dests {
+    for (rel, _) in dests {
+        // Re-validate immediately before each delete: a tree changed under us
+        // aborts fail-closed instead of unlinking a stale destination.
+        let dest = validate_generated_path(output_root, &rel)
+            .map_err(|e| format!("clean failed: {e}"))?;
         match std::fs::remove_file(&dest) {
             Ok(()) => deleted.push(rel),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -315,6 +374,8 @@ pub fn detect_orphans(output_root: &Path, prev: Option<&Manifest>) -> Vec<String
             if !meta.is_file() {
                 continue;
             }
+            // Staged commit temps carry no `.md` extension, so they are
+            // structurally excluded from orphan reporting here.
             if path.extension().and_then(|e| e.to_str()) != Some("md") {
                 continue;
             }
