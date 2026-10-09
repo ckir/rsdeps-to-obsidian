@@ -7,11 +7,13 @@
 //!
 //! # Module identity
 //!
-//! The root module's [`ModuleId`] is exactly the owning [`Target`]'s id
-//! string (e.g. `api::lib::api`). Every descendant appends its crate-relative
-//! path: `api::lib::api::foo`, `api::lib::api::api::handler`. This keeps each
-//! target's module namespace isolated even when a lib and a bin target share
-//! a name. `qualified_name` is the Rust logical path (`crate`, `crate::foo`).
+//! [`ModuleId`]s follow Task 2's [`make_module_id`] shape: non-root modules
+//! are `make_module_id(package_name, target.name, logical_path)` (e.g.
+//! `api::api::handler`); the root module is exactly two segments,
+//! `{package_name}::{target.name}` (e.g. `api::api`), with no trailing
+//! separator. The package name comes from the target's `package_id`, which
+//! `metadata::discover` sets to the Cargo package name. `qualified_name` is
+//! the Rust logical path (`crate`, `crate::foo`).
 //!
 //! # `extract_uses` contract (for Task 6)
 //!
@@ -27,7 +29,7 @@
 //! passed through untouched here; Task 6 emits the single run-level `CFG001`.
 
 use crate::domain::{Diagnostic, DiagnosticSeverity, Module, SourceSpan, Target};
-use crate::ids::ModuleId;
+use crate::ids::{make_module_id, ModuleId};
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use syn::spanned::Spanned;
@@ -76,7 +78,7 @@ pub fn discover_modules_for_target(
         parsed: HashMap::new(),
         stack: Vec::new(),
     };
-    let root_id = ModuleId(target.id.0.clone());
+    let root_id = ModuleId(format!("{}::{}", target.package_id.0, target.name));
     let root_display = target.root_source.clone();
     let root_canon = best_canonical(&target.root_source);
     match parse_source_file(&target.root_source) {
@@ -213,7 +215,7 @@ impl Walker<'_> {
     }
 
     fn child_id(&self, logical: &[String]) -> ModuleId {
-        ModuleId(format!("{}::{}", self.target.id.0, logical.join("::")))
+        make_module_id(&self.target.package_id.0, &self.target.name, logical)
     }
 
     fn qualified(&self, logical: &[String]) -> String {

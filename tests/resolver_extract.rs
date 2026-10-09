@@ -39,30 +39,30 @@ fn file_and_inline_modules_discovered() {
     assert_eq!(
         ids_of(&modules),
         vec![
-            "fix::lib::basic",
-            "fix::lib::basic::foo",
-            "fix::lib::basic::api",
-            "fix::lib::basic::api::handler",
+            "fix::basic",
+            "fix::basic::foo",
+            "fix::basic::api",
+            "fix::basic::api::handler",
         ]
     );
 
-    let root = find(&modules, "fix::lib::basic");
+    let root = find(&modules, "fix::basic");
     assert_eq!(root.qualified_name, "crate");
     assert_eq!(root.source_span, None);
 
-    let foo = find(&modules, "fix::lib::basic::foo");
+    let foo = find(&modules, "fix::basic::foo");
     assert_eq!(foo.qualified_name, "crate::foo");
     assert!(foo.source_path.as_ref().unwrap().ends_with("foo.rs"));
     assert_eq!(foo.source_span, None);
 
     // Inline modules carry no own file; their span points at the containing file.
-    let api = find(&modules, "fix::lib::basic::api");
+    let api = find(&modules, "fix::basic::api");
     assert_eq!(api.source_path, None);
     let api_span = api.source_span.as_ref().expect("inline mod needs a span");
     assert_eq!(api_span.file, dir.join("lib.rs"));
     assert_eq!((api_span.line_start, api_span.line_end), (3, 5));
 
-    let handler = find(&modules, "fix::lib::basic::api::handler");
+    let handler = find(&modules, "fix::basic::api::handler");
     assert_eq!(handler.qualified_name, "crate::api::handler");
     assert_eq!(handler.source_path, None);
     let handler_span = handler
@@ -81,9 +81,9 @@ fn path_attribute_respected_and_escaped_rejected() {
 
     assert_eq!(
         ids_of(&modules),
-        vec!["fix::lib::pathattr", "fix::lib::pathattr::custom"]
+        vec!["fix::pathattr", "fix::pathattr::custom"]
     );
-    let custom = find(&modules, "fix::lib::pathattr::custom");
+    let custom = find(&modules, "fix::pathattr::custom");
     assert!(custom
         .source_path
         .as_ref()
@@ -115,11 +115,8 @@ fn ambiguous_layout_prefers_file_rs_with_mod002() {
     let target = lib_target("fix", "ambig", dir.join("lib.rs"));
     let (modules, diags) = discover_modules_for_target(&target, &dir);
 
-    assert_eq!(
-        ids_of(&modules),
-        vec!["fix::lib::ambig", "fix::lib::ambig::qux"]
-    );
-    let qux = find(&modules, "fix::lib::ambig::qux");
+    assert_eq!(ids_of(&modules), vec!["fix::ambig", "fix::ambig::qux"]);
+    let qux = find(&modules, "fix::ambig::qux");
     let path = qux.source_path.as_ref().expect("file module needs a path");
     assert!(path.ends_with("qux.rs"), "must prefer qux.rs, got {path:?}");
     assert!(
@@ -145,31 +142,23 @@ fn use_trees_aliases_and_pub_use_extracted() {
 
     // `use` items never create modules: only root + the inline child.
     assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
-    assert_eq!(
-        ids_of(&modules),
-        vec!["fix::lib::uses", "fix::lib::uses::inner"]
-    );
+    assert_eq!(ids_of(&modules), vec!["fix::uses", "fix::uses::inner"]);
 
-    let root = find(&modules, "fix::lib::uses");
+    let root = find(&modules, "fix::uses");
     let file = parse_source_file(&dir.join("lib.rs")).expect("fixture must parse");
     let uses = extract_uses(root, &file);
 
-    let inner_id = "fix::lib::uses::inner";
+    let inner_id = "fix::uses::inner";
     let expected: Vec<(&str, &str, bool, Option<&str>)> = vec![
-        ("fix::lib::uses", "crate::alpha", false, None),
-        ("fix::lib::uses", "crate::beta", false, None),
-        ("fix::lib::uses", "crate::foo::gamma", false, None),
-        (
-            "fix::lib::uses",
-            "crate::foo::delta",
-            false,
-            Some("delta_alias"),
-        ),
-        ("fix::lib::uses", "crate::bar", false, Some("bar_alias")),
-        ("fix::lib::uses", "crate::shared", true, None),
-        ("fix::lib::uses", "self::sibling", false, None),
-        ("fix::lib::uses", "super::parent_mod", false, None),
-        ("fix::lib::uses", "serde::de::Deserializer", false, None),
+        ("fix::uses", "crate::alpha", false, None),
+        ("fix::uses", "crate::beta", false, None),
+        ("fix::uses", "crate::foo::gamma", false, None),
+        ("fix::uses", "crate::foo::delta", false, Some("delta_alias")),
+        ("fix::uses", "crate::bar", false, Some("bar_alias")),
+        ("fix::uses", "crate::shared", true, None),
+        ("fix::uses", "self::sibling", false, None),
+        ("fix::uses", "super::parent_mod", false, None),
+        ("fix::uses", "serde::de::Deserializer", false, None),
         (inner_id, "crate::deep::thing", false, None),
         (inner_id, "super::up_thing", true, None),
     ];
