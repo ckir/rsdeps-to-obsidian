@@ -78,10 +78,7 @@ pub fn compute_plan(desired: &[RenderedFile], prev: Option<&Manifest>) -> Plan {
     let prev_set: HashSet<&str> = prev
         .map(|m| m.generated_files.iter().map(|s| s.as_str()).collect())
         .unwrap_or_default();
-    let desired_set: HashSet<&str> = desired
-        .iter()
-        .map(|f| f.rel_path.as_str())
-        .collect();
+    let desired_set: HashSet<&str> = desired.iter().map(|f| f.rel_path.as_str()).collect();
     let mut create = Vec::new();
     let mut update = Vec::new();
     let mut seen_desired = HashSet::new();
@@ -241,9 +238,12 @@ pub fn commit(
     sync_best_effort(mtmp.as_file());
     validate_generated_path(output_root, MANIFEST_FILENAME)
         .map_err(|e| format!("commit failed: {e}"))?;
-    mtmp
-        .persist(&manifest_dest)
-        .map_err(|e| format!("commit failed: cannot publish {MANIFEST_FILENAME}: {}", e.error))?;
+    mtmp.persist(&manifest_dest).map_err(|e| {
+        format!(
+            "commit failed: cannot publish {MANIFEST_FILENAME}: {}",
+            e.error
+        )
+    })?;
     // Best-effort directory fsync so the rename itself is durable.
     if let Ok(dir) = std::fs::File::open(output_root) {
         sync_best_effort(&dir);
@@ -280,9 +280,10 @@ pub fn commit(
 pub fn clean(output_root: &Path, manifest: &Manifest) -> Result<Vec<String>, String> {
     // The commit record itself can never be a delete target, whatever
     // spelling a hostile manifest uses: compare validated destinations.
-    let manifest_dest_norm =
-        lexical_normalize(&validate_generated_path(output_root, MANIFEST_FILENAME)
-            .map_err(|e| format!("clean failed: {e}"))?);
+    let manifest_dest_norm = lexical_normalize(
+        &validate_generated_path(output_root, MANIFEST_FILENAME)
+            .map_err(|e| format!("clean failed: {e}"))?,
+    );
     // Validate all entries before the first delete: escape → abort, zero
     // effects from this call attributable to the hostile entry.
     let mut dests: Vec<(String, PathBuf)> = Vec::new();
@@ -291,8 +292,8 @@ pub fn clean(output_root: &Path, manifest: &Manifest) -> Result<Vec<String>, Str
         if !seen.insert(rel.as_str()) {
             continue;
         }
-        let dest = validate_generated_path(output_root, rel)
-            .map_err(|e| format!("clean failed: {e}"))?;
+        let dest =
+            validate_generated_path(output_root, rel).map_err(|e| format!("clean failed: {e}"))?;
         if lexical_normalize(&dest) == manifest_dest_norm {
             continue;
         }
@@ -303,8 +304,8 @@ pub fn clean(output_root: &Path, manifest: &Manifest) -> Result<Vec<String>, Str
     for (rel, _) in dests {
         // Re-validate immediately before each delete: a tree changed under us
         // aborts fail-closed instead of unlinking a stale destination.
-        let dest = validate_generated_path(output_root, &rel)
-            .map_err(|e| format!("clean failed: {e}"))?;
+        let dest =
+            validate_generated_path(output_root, &rel).map_err(|e| format!("clean failed: {e}"))?;
         match std::fs::remove_file(&dest) {
             Ok(()) => deleted.push(rel),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}

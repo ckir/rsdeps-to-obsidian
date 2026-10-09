@@ -97,8 +97,8 @@ fn snapshot_tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
         let entries = fs::read_dir(dir)
             .unwrap_or_else(|e| panic!("read test tree dir {}: {e}", dir.display()));
         for entry in entries {
-            let entry = entry
-                .unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
+            let entry =
+                entry.unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
             let path = entry.path();
             let rel = path
                 .strip_prefix(root)
@@ -141,9 +141,7 @@ fn update_snapshots(
     stdout: Option<&[u8]>,
     stderr: Option<&[u8]>,
 ) {
-    let _guard = SNAPSHOT_UPDATE_LOCK
-        .lock()
-        .expect("snapshot update lock");
+    let _guard = SNAPSHOT_UPDATE_LOCK.lock().expect("snapshot update lock");
     let dir = snapshots_dir();
     let tree_dir = dir.join("tree");
     let _ = fs::remove_dir_all(&tree_dir);

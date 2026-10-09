@@ -1,4 +1,4 @@
-use rsdeps2obsidian::config::{CliArgs, resolve_config};
+use rsdeps2obsidian::config::{resolve_config, CliArgs};
 use rsdeps2obsidian::{GENERATOR, PROTOCOL_VERSION, SCHEMA_VERSION, SPEC_VERSION};
 use std::path::{Path, PathBuf};
 

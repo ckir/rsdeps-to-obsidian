@@ -48,7 +48,10 @@ pub fn module_note_filename(module_id: &ModuleId, taken: &mut HashSet<String>) -
 /// the stem in the shared `taken` set. The stem keeps the `rust-external-`
 /// prefix so external notes are recognizable; `_` in the name is escaped as
 /// `___` (mirroring [`module_filename`]) before the `@` join becomes `__`.
-pub fn external_note_filename(external_id: &ExternalCrateId, taken: &mut HashSet<String>) -> String {
+pub fn external_note_filename(
+    external_id: &ExternalCrateId,
+    taken: &mut HashSet<String>,
+) -> String {
     let escaped = external_id.0.replace('_', "___").replace('@', "__");
     let stem = format!("rust-external-{escaped}");
     format!("{}.md", windows_safe_name(&stem, taken))
@@ -175,11 +178,7 @@ fn module_note(
     }
 }
 
-fn external_note(
-    external_id: &str,
-    used_by: &[String],
-    filename: &str,
-) -> RenderedFile {
+fn external_note(external_id: &str, used_by: &[String], filename: &str) -> RenderedFile {
     let mut front = handshake_frontmatter("rust-external-crate");
     front.push_str(&format!("external_crate_id: {external_id}\n"));
     let used_by_section = if used_by.is_empty() {
@@ -191,8 +190,9 @@ fn external_note(
         }
         out
     };
-    let content =
-        format!("---\n{front}---\n\n# {external_id}\n\nExternal Cargo dependency.\n\n{used_by_section}\n");
+    let content = format!(
+        "---\n{front}---\n\n# {external_id}\n\nExternal Cargo dependency.\n\n{used_by_section}\n"
+    );
     RenderedFile {
         rel_path: filename.to_string(),
         content,
@@ -206,7 +206,10 @@ fn root_note(graph: &WorkspaceGraph) -> RenderedFile {
     targets.sort();
     let mut diags = graph.diagnostics.clone();
     sort_diagnostics(&mut diags);
-    let mut content = format!("---\n{}---\n\n# Workspace dependencies\n", handshake_frontmatter("rust-dependency-root"));
+    let mut content = format!(
+        "---\n{}---\n\n# Workspace dependencies\n",
+        handshake_frontmatter("rust-dependency-root")
+    );
     content.push_str("\n## Packages\n\n");
     if packages.is_empty() {
         content.push_str("- (none)\n");
@@ -285,7 +288,10 @@ pub fn render_all(
                 format!("[[{}|{}]]", stem_of(&file), m.0)
             }
             DependencyTarget::External(e) => {
-                let file = external_files.get(e.0.as_str()).cloned().unwrap_or_default();
+                let file = external_files
+                    .get(e.0.as_str())
+                    .cloned()
+                    .unwrap_or_default();
                 format!("[[{}|{}]]", stem_of(&file), e.0)
             }
         }
@@ -309,11 +315,17 @@ pub fn render_all(
                 DependencyTarget::External(_) => false,
             })
             .map(|d| {
-                let file = link_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
+                let file = link_files
+                    .get(d.from.0.as_str())
+                    .cloned()
+                    .unwrap_or_default();
                 format!("[[{}|{}]]", stem_of(&file), d.from.0)
             })
             .collect();
-        let package_id = package_of.get(m.target_id.0.as_str()).copied().unwrap_or("");
+        let package_id = package_of
+            .get(m.target_id.0.as_str())
+            .copied()
+            .unwrap_or("");
         let filename = module_files
             .get(&(m.target_id.0.clone(), m.id.0.clone()))
             .cloned()
@@ -340,7 +352,10 @@ pub fn render_all(
                     DependencyTarget::Internal(_) => false,
                 })
                 .map(|d| {
-                    let file = link_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
+                    let file = link_files
+                        .get(d.from.0.as_str())
+                        .cloned()
+                        .unwrap_or_default();
                     format!("[[{}|{}]]", stem_of(&file), d.from.0)
                 })
                 .collect();

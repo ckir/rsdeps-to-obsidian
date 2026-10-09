@@ -7,8 +7,8 @@
 
 use rsdeps2obsidian::diag::{sort_diagnostics, workspace_rel};
 use rsdeps2obsidian::domain::{
-    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module,
-    Package, Target, TargetKind, WorkspaceGraph,
+    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
+    Target, TargetKind, WorkspaceGraph,
 };
 use rsdeps2obsidian::graph::{dedup_dependencies, sort_graph};
 use rsdeps2obsidian::ids::{make_external_id, make_module_id, make_target_id, ModuleId};
@@ -17,8 +17,7 @@ use rsdeps2obsidian::resolver::{AnalysisInput, Analyzer, SynAnalyzer};
 use std::path::{Path, PathBuf};
 
 fn tmpdir(test: &str) -> PathBuf {
-    let dir =
-        std::env::temp_dir().join(format!("rsdeps-task6-{}-{}", test, std::process::id()));
+    let dir = std::env::temp_dir().join(format!("rsdeps-task6-{}-{}", test, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -124,7 +123,11 @@ fn self_super_crate_paths_resolve_internally() {
     );
 
     // Dependencies are totally ordered by `from`.
-    let froms: Vec<&str> = graph.dependencies.iter().map(|d| d.from.0.as_str()).collect();
+    let froms: Vec<&str> = graph
+        .dependencies
+        .iter()
+        .map(|d| d.from.0.as_str())
+        .collect();
     assert_eq!(froms, vec!["t6a::t6a", "t6a::t6a", "t6a::t6a::foo"]);
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -383,18 +386,32 @@ fn ambiguous_ownership_warns_scope001_without_edge() {
     }];
     let graph = SynAnalyzer.analyze(&input(&dir, target, deps)).unwrap();
 
-    let scope: Vec<&Diagnostic> =
-        graph.diagnostics.iter().filter(|d| d.code == "SCOPE001").collect();
+    let scope: Vec<&Diagnostic> = graph
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "SCOPE001")
+        .collect();
     assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
     assert_eq!(scope[0].severity, DiagnosticSeverity::Warning);
-    assert!(scope[0].message.contains("scope collision"), "{}", scope[0].message);
+    assert!(
+        scope[0].message.contains("scope collision"),
+        "{}",
+        scope[0].message
+    );
 
     // No edge for the ambiguous path: neither internal nor external.
-    assert!(graph
-        .dependencies
-        .iter()
-        .all(|d| !matches!(&d.to, DependencyTarget::External(_))), "{:?}", graph.dependencies);
-    assert_eq!(edge_kind(&graph.dependencies, "t6c::t6c", "t6c::t6c::foo::bar"), None);
+    assert!(
+        graph
+            .dependencies
+            .iter()
+            .all(|d| !matches!(&d.to, DependencyTarget::External(_))),
+        "{:?}",
+        graph.dependencies
+    );
+    assert_eq!(
+        edge_kind(&graph.dependencies, "t6c::t6c", "t6c::t6c::foo::bar"),
+        None
+    );
     // The `mod` containment edges survive.
     assert_eq!(graph.dependencies.len(), 2);
 
@@ -421,8 +438,11 @@ fn multiversion_dep_warns_exact_scope001_text() {
     ];
     let graph = SynAnalyzer.analyze(&input(&dir, target, deps)).unwrap();
 
-    let scope: Vec<&Diagnostic> =
-        graph.diagnostics.iter().filter(|d| d.code == "SCOPE001").collect();
+    let scope: Vec<&Diagnostic> = graph
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "SCOPE001")
+        .collect();
     assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
     assert_eq!(scope[0].severity, DiagnosticSeverity::Warning);
     assert_eq!(
@@ -442,9 +462,24 @@ fn duplicate_edges_dedup_with_precedence_and_order() {
 
     // Same (from, to) via all three kinds collapses to the single ReExport winner.
     let dupes = vec![
-        Dependency { from: from_a.clone(), to: to_z.clone(), kind: DependencyKind::Module, source_span: None },
-        Dependency { from: from_a.clone(), to: to_z.clone(), kind: DependencyKind::Use, source_span: None },
-        Dependency { from: from_a.clone(), to: to_z.clone(), kind: DependencyKind::ReExport, source_span: None },
+        Dependency {
+            from: from_a.clone(),
+            to: to_z.clone(),
+            kind: DependencyKind::Module,
+            source_span: None,
+        },
+        Dependency {
+            from: from_a.clone(),
+            to: to_z.clone(),
+            kind: DependencyKind::Use,
+            source_span: None,
+        },
+        Dependency {
+            from: from_a.clone(),
+            to: to_z.clone(),
+            kind: DependencyKind::ReExport,
+            source_span: None,
+        },
     ];
     let deduped = dedup_dependencies(dupes);
     assert_eq!(deduped.len(), 1);
@@ -470,11 +505,36 @@ fn duplicate_edges_dedup_with_precedence_and_order() {
             source_span: None,
         }],
         dependencies: vec![
-            Dependency { from: from_b.clone(), to: to_z.clone(), kind: DependencyKind::Module, source_span: None },
-            Dependency { from: from_a.clone(), to: ext_x.clone(), kind: DependencyKind::ReExport, source_span: None },
-            Dependency { from: from_a.clone(), to: ext_a.clone(), kind: DependencyKind::Module, source_span: None },
-            Dependency { from: from_a.clone(), to: to_z.clone(), kind: DependencyKind::Use, source_span: None },
-            Dependency { from: from_a.clone(), to: to_z.clone(), kind: DependencyKind::Module, source_span: None },
+            Dependency {
+                from: from_b.clone(),
+                to: to_z.clone(),
+                kind: DependencyKind::Module,
+                source_span: None,
+            },
+            Dependency {
+                from: from_a.clone(),
+                to: ext_x.clone(),
+                kind: DependencyKind::ReExport,
+                source_span: None,
+            },
+            Dependency {
+                from: from_a.clone(),
+                to: ext_a.clone(),
+                kind: DependencyKind::Module,
+                source_span: None,
+            },
+            Dependency {
+                from: from_a.clone(),
+                to: to_z.clone(),
+                kind: DependencyKind::Use,
+                source_span: None,
+            },
+            Dependency {
+                from: from_a.clone(),
+                to: to_z.clone(),
+                kind: DependencyKind::Module,
+                source_span: None,
+            },
         ],
         diagnostics: vec![],
     };
@@ -493,11 +553,31 @@ fn duplicate_edges_dedup_with_precedence_and_order() {
     assert_eq!(
         order,
         vec![
-            (from_a.0.clone(), format!("i:{}", "p::p::z"), DependencyKind::Module),
-            (from_a.0.clone(), format!("i:{}", "p::p::z"), DependencyKind::Use),
-            (from_a.0.clone(), "e:a@1".to_string(), DependencyKind::Module),
-            (from_a.0.clone(), "e:x@1".to_string(), DependencyKind::ReExport),
-            (from_b.0.clone(), format!("i:{}", "p::p::z"), DependencyKind::Module),
+            (
+                from_a.0.clone(),
+                format!("i:{}", "p::p::z"),
+                DependencyKind::Module
+            ),
+            (
+                from_a.0.clone(),
+                format!("i:{}", "p::p::z"),
+                DependencyKind::Use
+            ),
+            (
+                from_a.0.clone(),
+                "e:a@1".to_string(),
+                DependencyKind::Module
+            ),
+            (
+                from_a.0.clone(),
+                "e:x@1".to_string(),
+                DependencyKind::ReExport
+            ),
+            (
+                from_b.0.clone(),
+                format!("i:{}", "p::p::z"),
+                DependencyKind::Module
+            ),
         ]
     );
 }
@@ -514,8 +594,11 @@ fn cfg_emits_exactly_one_warning() {
     let target = lib_target("t6e", "t6e", dir.join("lib.rs"));
     let graph = SynAnalyzer.analyze(&input(&dir, target, vec![])).unwrap();
 
-    let cfg: Vec<&Diagnostic> =
-        graph.diagnostics.iter().filter(|d| d.code == "CFG001").collect();
+    let cfg: Vec<&Diagnostic> = graph
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "CFG001")
+        .collect();
     assert_eq!(cfg.len(), 1, "{:?}", graph.diagnostics);
     assert_eq!(cfg[0].severity, DiagnosticSeverity::Warning);
     assert_eq!(
@@ -552,9 +635,18 @@ fn diag(
 #[test]
 fn diagnostics_sort_total_order() {
     // workspace_rel: `/` separators, root-relative, no `.`/`..`.
-    assert_eq!(workspace_rel(Path::new("/ws/src/foo.rs"), Path::new("/ws")), "src/foo.rs");
-    assert_eq!(workspace_rel(Path::new("/ws/a/../src/./foo.rs"), Path::new("/ws")), "src/foo.rs");
-    assert_eq!(workspace_rel(Path::new("/other/x.rs"), Path::new("/ws")), "/other/x.rs");
+    assert_eq!(
+        workspace_rel(Path::new("/ws/src/foo.rs"), Path::new("/ws")),
+        "src/foo.rs"
+    );
+    assert_eq!(
+        workspace_rel(Path::new("/ws/a/../src/./foo.rs"), Path::new("/ws")),
+        "src/foo.rs"
+    );
+    assert_eq!(
+        workspace_rel(Path::new("/other/x.rs"), Path::new("/ws")),
+        "/other/x.rs"
+    );
 
     use DiagnosticSeverity::{Error, Info, Warning};
     // Missing line sorts before present lines within the same severity+code.
@@ -582,14 +674,62 @@ fn diagnostics_sort_total_order() {
     assert_eq!(
         diags.iter().map(key).collect::<Vec<_>>(),
         vec![
-            ("Info".to_string(), "A".to_string(), Some("a.rs".to_string()), Some(1), "a".to_string()),
-            ("Info".to_string(), "A".to_string(), Some("a.rs".to_string()), Some(1), "b".to_string()),
-            ("Info".to_string(), "Z".to_string(), None, None, "m".to_string()),
-            ("Warning".to_string(), "A".to_string(), None, None, "m-missing-line-first".to_string()),
-            ("Warning".to_string(), "A".to_string(), Some("a.rs".to_string()), Some(3), "m".to_string()),
-            ("Warning".to_string(), "A".to_string(), Some("b.rs".to_string()), Some(1), "a".to_string()),
-            ("Warning".to_string(), "B".to_string(), Some("a.rs".to_string()), Some(1), "m".to_string()),
-            ("Error".to_string(), "B".to_string(), Some("b.rs".to_string()), Some(5), "m".to_string()),
+            (
+                "Info".to_string(),
+                "A".to_string(),
+                Some("a.rs".to_string()),
+                Some(1),
+                "a".to_string()
+            ),
+            (
+                "Info".to_string(),
+                "A".to_string(),
+                Some("a.rs".to_string()),
+                Some(1),
+                "b".to_string()
+            ),
+            (
+                "Info".to_string(),
+                "Z".to_string(),
+                None,
+                None,
+                "m".to_string()
+            ),
+            (
+                "Warning".to_string(),
+                "A".to_string(),
+                None,
+                None,
+                "m-missing-line-first".to_string()
+            ),
+            (
+                "Warning".to_string(),
+                "A".to_string(),
+                Some("a.rs".to_string()),
+                Some(3),
+                "m".to_string()
+            ),
+            (
+                "Warning".to_string(),
+                "A".to_string(),
+                Some("b.rs".to_string()),
+                Some(1),
+                "a".to_string()
+            ),
+            (
+                "Warning".to_string(),
+                "B".to_string(),
+                Some("a.rs".to_string()),
+                Some(1),
+                "m".to_string()
+            ),
+            (
+                "Error".to_string(),
+                "B".to_string(),
+                Some("b.rs".to_string()),
+                Some(5),
+                "m".to_string()
+            ),
         ]
     );
 

@@ -70,24 +70,16 @@ pub fn compare_dependencies(a: &Dependency, b: &Dependency) -> Ordering {
         other => return other,
     }
     match (&a.to, &b.to) {
-        (DependencyTarget::Internal(_), DependencyTarget::External(_)) => {
-            return Ordering::Less
-        }
-        (DependencyTarget::External(_), DependencyTarget::Internal(_)) => {
-            return Ordering::Greater
-        }
-        (DependencyTarget::Internal(x), DependencyTarget::Internal(y)) => {
-            match x.0.cmp(&y.0) {
-                Ordering::Equal => {}
-                other => return other,
-            }
-        }
-        (DependencyTarget::External(x), DependencyTarget::External(y)) => {
-            match x.0.cmp(&y.0) {
-                Ordering::Equal => {}
-                other => return other,
-            }
-        }
+        (DependencyTarget::Internal(_), DependencyTarget::External(_)) => return Ordering::Less,
+        (DependencyTarget::External(_), DependencyTarget::Internal(_)) => return Ordering::Greater,
+        (DependencyTarget::Internal(x), DependencyTarget::Internal(y)) => match x.0.cmp(&y.0) {
+            Ordering::Equal => {}
+            other => return other,
+        },
+        (DependencyTarget::External(x), DependencyTarget::External(y)) => match x.0.cmp(&y.0) {
+            Ordering::Equal => {}
+            other => return other,
+        },
     }
     match kind_rank(&a.kind).cmp(&kind_rank(&b.kind)) {
         Ordering::Equal => {}
@@ -96,7 +88,9 @@ pub fn compare_dependencies(a: &Dependency, b: &Dependency) -> Ordering {
     span_key(&a.source_span).cmp(&span_key(&b.source_span))
 }
 
-fn span_key(span: &Option<crate::domain::SourceSpan>) -> (Option<String>, Option<u32>, Option<u32>) {
+fn span_key(
+    span: &Option<crate::domain::SourceSpan>,
+) -> (Option<String>, Option<u32>, Option<u32>) {
     match span {
         None => (None, None, None),
         Some(s) => (
@@ -112,12 +106,11 @@ fn span_key(span: &Option<crate::domain::SourceSpan>) -> (Option<String>, Option
 pub fn sort_graph(graph: &mut WorkspaceGraph) {
     graph.packages.sort_by(|a, b| a.id.cmp(&b.id));
     graph.targets.sort_by(|a, b| {
-        (
-            &a.package_id,
-            a.kind.kind_token(),
-            &a.name,
-        )
-            .cmp(&(&b.package_id, b.kind.kind_token(), &b.name))
+        (&a.package_id, a.kind.kind_token(), &a.name).cmp(&(
+            &b.package_id,
+            b.kind.kind_token(),
+            &b.name,
+        ))
     });
     graph.modules.sort_by(|a, b| a.id.cmp(&b.id));
     graph.dependencies.sort_by(compare_dependencies);

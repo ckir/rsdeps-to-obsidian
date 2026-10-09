@@ -53,8 +53,8 @@ fn snapshot(root: &Path) -> BTreeMap<String, Vec<u8>> {
         let entries = fs::read_dir(dir)
             .unwrap_or_else(|e| panic!("read test tree dir {}: {e}", dir.display()));
         for entry in entries {
-            let entry = entry
-                .unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
+            let entry =
+                entry.unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
             let path = entry.path();
             let rel = path
                 .strip_prefix(root)
@@ -100,7 +100,11 @@ fn dry_run_writes_nothing() {
     assert_eq!(plan.create, vec!["a.md".to_string(), "b.md".to_string()]);
     assert!(plan.update.is_empty());
     assert_eq!(plan.delete, vec!["old.md".to_string()]);
-    assert_eq!(snapshot(&root), before, "dry-run must leave the tree untouched");
+    assert_eq!(
+        snapshot(&root),
+        before,
+        "dry-run must leave the tree untouched"
+    );
     assert!(!root.join(MANIFEST_FILENAME).exists());
     assert!(root.join("old.md").exists(), "dry-run must not delete");
 }
@@ -135,7 +139,9 @@ fn manifest_is_commit_record_and_cleanup_after() {
         fs::read_to_string(root.join("new.md")).unwrap(),
         rendered[1].content
     );
-    let on_disk = read_manifest(&root.join(MANIFEST_FILENAME)).unwrap().unwrap();
+    let on_disk = read_manifest(&root.join(MANIFEST_FILENAME))
+        .unwrap()
+        .unwrap();
     assert_eq!(on_disk, manifest);
     // Stale prev-only entry deleted only after the manifest rename: the new
     // manifest is authoritative while the stale file is gone.
@@ -164,8 +170,14 @@ fn clean_deletes_only_listed_entries() {
     let deleted = clean(&root, &manifest).unwrap();
     assert_eq!(deleted, vec!["listed.md".to_string()]);
     assert!(!root.join("listed.md").exists());
-    assert!(root.join("unrelated.md").exists(), "clean must spare unrelated files");
-    assert!(root.join("orphan.md").exists(), "clean must never delete orphans");
+    assert!(
+        root.join("unrelated.md").exists(),
+        "clean must spare unrelated files"
+    );
+    assert!(
+        root.join("orphan.md").exists(),
+        "clean must never delete orphans"
+    );
 
     // Invalid manifest => Err + zero deletes (read boundary rejects it first).
     fs::write(root.join("listed.md"), "generated").unwrap();
@@ -179,22 +191,33 @@ fn clean_deletes_only_listed_entries() {
         Err(e) => Err(e),
     };
     assert!(run_outcome.unwrap_err().contains("invalid manifest"));
-    assert_eq!(snapshot(&root), before, "invalid manifest must cause zero deletes");
+    assert_eq!(
+        snapshot(&root),
+        before,
+        "invalid manifest must cause zero deletes"
+    );
 
     // Missing manifest => Ok(empty), zero deletes: the run-level flow maps
     // None to an empty deletion set without touching the tree.
     let _ = fs::remove_file(root.join(MANIFEST_FILENAME));
     let before = snapshot(&root);
-    let result: Result<Vec<String>, String> = match read_manifest(&root.join(MANIFEST_FILENAME)).unwrap()
-    {
-        None => Ok(vec![]),
-        Some(m) => clean(&root, &m),
-    };
+    let result: Result<Vec<String>, String> =
+        match read_manifest(&root.join(MANIFEST_FILENAME)).unwrap() {
+            None => Ok(vec![]),
+            Some(m) => clean(&root, &m),
+        };
     assert_eq!(result.unwrap(), Vec::<String>::new());
-    assert_eq!(snapshot(&root), before, "missing manifest must delete nothing");
+    assert_eq!(
+        snapshot(&root),
+        before,
+        "missing manifest must delete nothing"
+    );
     // The same empty-deletion semantics through the real `clean`: an empty
     // manifest deletes nothing and reports nothing.
-    assert_eq!(clean(&root, &manifest_for(&[])).unwrap(), Vec::<String>::new());
+    assert_eq!(
+        clean(&root, &manifest_for(&[])).unwrap(),
+        Vec::<String>::new()
+    );
     assert_eq!(snapshot(&root), before, "empty clean must delete nothing");
     // And through the real `commit`: with no previous manifest, deletions are
     // disabled, so pre-existing unrelated files survive the commit.
@@ -224,18 +247,33 @@ fn orphans_reported_never_deleted() {
     let prev = manifest_for(&["index.md"]);
 
     let orphans = detect_orphans(&root, Some(&prev));
-    assert_eq!(orphans, vec!["orphan generated file: orphan.md".to_string()]);
+    assert_eq!(
+        orphans,
+        vec!["orphan generated file: orphan.md".to_string()]
+    );
     assert!(detect_orphans(&root, None).contains(&"orphan generated file: orphan.md".to_string()));
 
     // commit + clean leave the orphan on disk.
     let rendered = vec![note("index.md", "root")];
     let manifest = manifest_for(&["index.md"]);
     commit(&rendered, &manifest, &root, Some(&prev), false).unwrap();
-    assert!(root.join("index.md").exists(), "commit must publish listed files");
-    assert!(root.join("orphan.md").exists(), "commit must never delete orphans");
+    assert!(
+        root.join("index.md").exists(),
+        "commit must publish listed files"
+    );
+    assert!(
+        root.join("orphan.md").exists(),
+        "commit must never delete orphans"
+    );
     clean(&root, &manifest).unwrap();
-    assert!(!root.join("index.md").exists(), "clean removes listed entries");
-    assert!(root.join("orphan.md").exists(), "orphans must never be auto-deleted");
+    assert!(
+        !root.join("index.md").exists(),
+        "clean removes listed entries"
+    );
+    assert!(
+        root.join("orphan.md").exists(),
+        "orphans must never be auto-deleted"
+    );
     assert!(root.join("plain.md").exists());
     assert!(root.join("wrongproto.md").exists());
 }
@@ -252,7 +290,10 @@ fn crash_points_keep_old_manifest_authoritative() {
     )
     .unwrap();
     fs::write(root_a.join("new.md"), note("new.md", "new").content).unwrap(); // published, uncommitted
-    assert_eq!(read_manifest(&root_a.join(MANIFEST_FILENAME)).unwrap(), Some(old_a.clone()));
+    assert_eq!(
+        read_manifest(&root_a.join(MANIFEST_FILENAME)).unwrap(),
+        Some(old_a.clone())
+    );
     assert_eq!(
         detect_orphans(&root_a, Some(&old_a)),
         vec!["orphan generated file: new.md".to_string()]
@@ -269,8 +310,15 @@ fn crash_points_keep_old_manifest_authoritative() {
     .unwrap();
     fs::write(root_b.join("new.md"), note("new.md", "new").content).unwrap();
     let new_b = manifest_for(&["new.md", "old.md"]);
-    fs::write(root_b.join(".tmp-manifest-123"), serde_json::to_string_pretty(&new_b).unwrap()).unwrap();
-    assert_eq!(read_manifest(&root_b.join(MANIFEST_FILENAME)).unwrap(), Some(old_b.clone()));
+    fs::write(
+        root_b.join(".tmp-manifest-123"),
+        serde_json::to_string_pretty(&new_b).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        read_manifest(&root_b.join(MANIFEST_FILENAME)).unwrap(),
+        Some(old_b.clone())
+    );
     assert_eq!(
         detect_orphans(&root_b, Some(&old_b)),
         vec!["orphan generated file: new.md".to_string()],
@@ -290,12 +338,18 @@ fn crash_points_keep_old_manifest_authoritative() {
     )
     .unwrap();
     // New manifest authoritative; leftover is reported, never auto-deleted.
-    assert_eq!(read_manifest(&root_c.join(MANIFEST_FILENAME)).unwrap(), Some(new_c.clone()));
+    assert_eq!(
+        read_manifest(&root_c.join(MANIFEST_FILENAME)).unwrap(),
+        Some(new_c.clone())
+    );
     assert_eq!(
         detect_orphans(&root_c, Some(&new_c)),
         vec!["orphan generated file: stale.md".to_string()]
     );
-    assert!(root_c.join("stale.md").exists(), "leftovers must never be auto-deleted");
+    assert!(
+        root_c.join("stale.md").exists(),
+        "leftovers must never be auto-deleted"
+    );
     let _ = old_c;
 }
 
@@ -311,9 +365,15 @@ fn symlink_escape_rejected() {
 
     // Output through a symlinked parent: resolution fails, commit never starts.
     let err = resolve_output_root(&base.join("link").join("graph"), &base).unwrap_err();
-    assert!(err.contains("unsafe output path"), "unexpected error: {err}");
+    assert!(
+        err.contains("unsafe output path"),
+        "unexpected error: {err}"
+    );
     assert!(!base.join("link").join("graph").exists());
-    assert!(!real.join("graph").exists(), "zero writes through the symlink");
+    assert!(
+        !real.join("graph").exists(),
+        "zero writes through the symlink"
+    );
 
     // A generated path escaping the root is rejected with zero writes.
     let root = base.join("out");
@@ -326,7 +386,11 @@ fn symlink_escape_rejected() {
     let before = snapshot(&root);
     let err = commit(&evil, &manifest, &root, None, false).unwrap_err();
     assert!(err.contains("unsafe"), "unexpected error: {err}");
-    assert_eq!(snapshot(&root), before, "failed validation must write nothing");
+    assert_eq!(
+        snapshot(&root),
+        before,
+        "failed validation must write nothing"
+    );
     assert!(!base.join("evil.md").exists());
 }
 
@@ -375,9 +439,15 @@ fn manifest_record_never_clobbered_or_deleted() {
     let new = manifest_for(&["a.md"]);
 
     let plan = commit(&rendered, &new, &root, Some(&hostile_prev), false).unwrap();
-    assert_eq!(plan.delete, vec!["./manifest.json".to_string(), "stale.md".to_string()]);
+    assert_eq!(
+        plan.delete,
+        vec!["./manifest.json".to_string(), "stale.md".to_string()]
+    );
     // Commit record intact as the NEW manifest; stale handled normally.
-    assert_eq!(read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(), Some(new));
+    assert_eq!(
+        read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(),
+        Some(new)
+    );
     assert!(!root.join("stale.md").exists());
     assert!(root.join("a.md").exists());
 
@@ -402,7 +472,11 @@ fn manifest_record_never_clobbered_or_deleted() {
         }];
         let err = commit(&evil, &manifest_for(&[spelling]), &root, None, false).unwrap_err();
         assert!(err.contains("collides"), "unexpected error: {err}");
-        assert_eq!(snapshot(&root), before, "colliding render must write nothing");
+        assert_eq!(
+            snapshot(&root),
+            before,
+            "colliding render must write nothing"
+        );
     }
     assert_eq!(
         read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(),
@@ -426,12 +500,21 @@ fn manifest_rename_failure_skips_cleanup() {
     let rendered = vec![note("old.md", "old-new"), note("new.md", "new")];
     let new = manifest_for(&["new.md", "old.md"]);
     let err = commit(&rendered, &new, &root, Some(&prev), false).unwrap_err();
-    assert!(err.contains("cannot publish manifest.json"), "unexpected error: {err}");
+    assert!(
+        err.contains("cannot publish manifest.json"),
+        "unexpected error: {err}"
+    );
     // Markdown publish succeeded (we got past stage 4) …
-    assert_eq!(fs::read_to_string(root.join("new.md")).unwrap(), note("new.md", "new").content);
+    assert_eq!(
+        fs::read_to_string(root.join("new.md")).unwrap(),
+        note("new.md", "new").content
+    );
     // … but the stale file was NOT deleted: deletes run only after the
     // manifest rename.
-    assert!(root.join("stale.md").exists(), "cleanup ran before manifest rename");
+    assert!(
+        root.join("stale.md").exists(),
+        "cleanup ran before manifest rename"
+    );
     assert!(root.join(MANIFEST_FILENAME).is_dir());
 }
 
@@ -449,8 +532,14 @@ fn hostile_entries_fail_closed() {
     let err = clean(&root, &hostile).unwrap_err();
     assert!(err.contains("clean failed"), "unexpected error: {err}");
     assert_eq!(snapshot(&base), before, "escape abort must delete nothing");
-    assert!(root.join("legit.md").exists(), "legit entry must survive escape abort");
-    assert_eq!(fs::read_to_string(base.join("evil.md")).unwrap(), "sentinel");
+    assert!(
+        root.join("legit.md").exists(),
+        "legit entry must survive escape abort"
+    );
+    assert_eq!(
+        fs::read_to_string(base.join("evil.md")).unwrap(),
+        "sentinel"
+    );
 
     // (b) `commit` cleanup with a hostile prev: Ok (cleanup-failure-tolerant
     // per brief), escape target untouched, legitimate stale handled normally.
@@ -463,8 +552,17 @@ fn hostile_entries_fail_closed() {
         plan.delete,
         vec!["../evil.md".to_string(), "stale.md".to_string()]
     );
-    assert_eq!(fs::read_to_string(base.join("evil.md")).unwrap(), "sentinel");
-    assert!(!root.join("stale.md").exists(), "legit stale must be cleaned");
+    assert_eq!(
+        fs::read_to_string(base.join("evil.md")).unwrap(),
+        "sentinel"
+    );
+    assert!(
+        !root.join("stale.md").exists(),
+        "legit stale must be cleaned"
+    );
     assert!(root.join("a.md").exists());
-    assert_eq!(read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(), Some(new));
+    assert_eq!(
+        read_manifest(&root.join(MANIFEST_FILENAME)).unwrap(),
+        Some(new)
+    );
 }

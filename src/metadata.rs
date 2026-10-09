@@ -41,8 +41,7 @@ pub fn discover(config: &Config) -> Result<DiscoveredWorkspace, String> {
     }
     let metadata = cmd.exec().map_err(|e| e.to_string())?;
 
-    let members: HashSet<&cargo_metadata::PackageId> =
-        metadata.workspace_members.iter().collect();
+    let members: HashSet<&cargo_metadata::PackageId> = metadata.workspace_members.iter().collect();
 
     let mut packages = Vec::new();
     let mut targets = Vec::new();
@@ -72,12 +71,11 @@ pub fn discover(config: &Config) -> Result<DiscoveredWorkspace, String> {
     }
     packages.sort_by(|a, b| a.id.cmp(&b.id));
     targets.sort_by(|a, b| {
-        (
-            &a.package_id,
-            a.kind.kind_token(),
-            &a.name,
-        )
-            .cmp(&(&b.package_id, b.kind.kind_token(), &b.name))
+        (&a.package_id, a.kind.kind_token(), &a.name).cmp(&(
+            &b.package_id,
+            b.kind.kind_token(),
+            &b.name,
+        ))
     });
 
     let mut external_deps = Vec::new();

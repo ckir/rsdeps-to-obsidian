@@ -41,8 +41,7 @@ pub struct Manifest {
 /// The `filename` tiebreak never fires when ids are distinct, so ordering is
 /// unchanged for existing graphs.
 pub fn build_manifest(rendered: &[RenderedFile], graph: &WorkspaceGraph) -> Manifest {
-    let mut generated_files: Vec<String> =
-        rendered.iter().map(|f| f.rel_path.clone()).collect();
+    let mut generated_files: Vec<String> = rendered.iter().map(|f| f.rel_path.clone()).collect();
     generated_files.sort();
     let (module_files, _) = assign_filenames(graph);
     let mut module_records: Vec<ModuleRecord> = graph

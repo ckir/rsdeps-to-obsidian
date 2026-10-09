@@ -15,11 +15,7 @@ fn fixture_config(workspace: &str) -> Config {
 }
 
 fn fixture_root() -> String {
-    concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/min-workspace"
-    )
-    .to_string()
+    concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/min-workspace").to_string()
 }
 
 #[test]
@@ -56,8 +52,9 @@ fn unsupported_target_kinds_are_ignored() {
     let ws = discover(&fixture_config(&fixture_root())).unwrap();
     // The fixture declares test- and bench-only targets; they must be skipped.
     assert!(
-        ws.targets.iter().all(|t| t.id.0.contains("::lib::")
-            || t.id.0.contains("::bin::")),
+        ws.targets
+            .iter()
+            .all(|t| t.id.0.contains("::lib::") || t.id.0.contains("::bin::")),
         "unexpected target kinds: {:?}",
         ws.targets.iter().map(|t| &t.id.0).collect::<Vec<_>>()
     );

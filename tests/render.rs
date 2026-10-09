@@ -1,8 +1,8 @@
 //! Task 7: Markdown notes, graph JSON, and manifest rendering.
 
 use rsdeps2obsidian::domain::{
-    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module,
-    Package, SourceSpan, Target, TargetKind, WorkspaceGraph,
+    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
+    SourceSpan, Target, TargetKind, WorkspaceGraph,
 };
 use rsdeps2obsidian::ids::{make_external_id, make_target_id, ModuleId, PackageId};
 use rsdeps2obsidian::manifest::{build_manifest, read_manifest};
@@ -102,7 +102,9 @@ fn module_note_frontmatter_and_links() {
         );
     }
     assert!(
-        handler.content.contains("[[api__api__model|api::api::model]]"),
+        handler
+            .content
+            .contains("[[api__api__model|api::api::model]]"),
         "handler Depends-on link missing:\n{}",
         handler.content
     );
@@ -191,7 +193,9 @@ fn external_markdown_gated_but_json_retained() {
         .find(|f| f.content.contains("graph_type: rust-external-crate"))
         .expect("external=true must emit an external note");
     assert!(
-        external.content.contains("external_crate_id: serde@1.0.205"),
+        external
+            .content
+            .contains("external_crate_id: serde@1.0.205"),
         "external note missing crate id:\n{}",
         external.content
     );
@@ -230,7 +234,11 @@ fn manifest_shape_and_determinism() {
 
     let json = render_graph_json(&graph);
     assert!(json.ends_with('\n'), "JSON must end with a newline");
-    assert_eq!(json, render_graph_json(&graph), "JSON must be deterministic");
+    assert_eq!(
+        json,
+        render_graph_json(&graph),
+        "JSON must be deterministic"
+    );
 
     // Manifest round-trip through a temp dir.
     let dir = std::env::temp_dir().join(format!("rsdeps-task7-manifest-{}", std::process::id()));
@@ -346,8 +354,14 @@ fn shared_module_id_gets_distinct_filenames() {
                 .to_string()
         })
         .collect();
-    assert!(targets.contains(&"target_id: pkg::lib::pkg".to_string()), "{targets:?}");
-    assert!(targets.contains(&"target_id: pkg::bin::pkg".to_string()), "{targets:?}");
+    assert!(
+        targets.contains(&"target_id: pkg::lib::pkg".to_string()),
+        "{targets:?}"
+    );
+    assert!(
+        targets.contains(&"target_id: pkg::bin::pkg".to_string()),
+        "{targets:?}"
+    );
     // Link to the shared id resolves to the first file in module sort order
     // ((module_id, target_id): the bin root sorts before the lib root).
     let user = rendered
@@ -360,7 +374,10 @@ fn shared_module_id_gets_distinct_filenames() {
         .expect("bin root note missing");
     let expected = format!(
         "[[{}|pkg::pkg]]",
-        first.rel_path.strip_suffix(".md").unwrap_or(&first.rel_path)
+        first
+            .rel_path
+            .strip_suffix(".md")
+            .unwrap_or(&first.rel_path)
     );
     assert!(
         user.content.contains(&expected),
@@ -388,7 +405,12 @@ fn shared_module_id_manifest_has_no_duplicates() {
         .iter()
         .filter(|r| r.module_id == "pkg::pkg")
         .collect();
-    assert_eq!(shared.len(), 2, "one record per module: {:?}", manifest.module_records);
+    assert_eq!(
+        shared.len(),
+        2,
+        "one record per module: {:?}",
+        manifest.module_records
+    );
     assert_ne!(
         shared[0].filename, shared[1].filename,
         "records sharing module_id must carry distinct filenames"

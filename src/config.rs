@@ -2,7 +2,11 @@ use clap::Parser;
 use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Parser)]
-#[command(name = "rsdeps2obsidian", version, about = "Cargo workspace module-structure analysis to Obsidian graph")]
+#[command(
+    name = "rsdeps2obsidian",
+    version,
+    about = "Cargo workspace module-structure analysis to Obsidian graph"
+)]
 pub struct CliArgs {
     #[arg(value_name = "WORKSPACE")]
     pub workspace: Option<PathBuf>,
@@ -65,15 +69,10 @@ fn resolve_output(output: Option<&Path>, cwd: &Path) -> PathBuf {
 
 pub fn resolve_config(args: &CliArgs, cwd: &Path) -> Result<Config, String> {
     if args.workspace.is_some() && args.manifest_path.is_some() {
-        return Err(
-            "workspace and --manifest-path are mutually exclusive".to_string(),
-        );
+        return Err("workspace and --manifest-path are mutually exclusive".to_string());
     }
     Ok(Config {
-        workspace_input: args
-            .workspace
-            .clone()
-            .unwrap_or_else(|| PathBuf::from(".")),
+        workspace_input: args.workspace.clone().unwrap_or_else(|| PathBuf::from(".")),
         manifest_path: args.manifest_path.clone(),
         output_raw: resolve_output(args.output.as_deref(), cwd),
         clean: args.clean,

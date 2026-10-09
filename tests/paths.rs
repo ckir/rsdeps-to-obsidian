@@ -40,10 +40,8 @@ fn windows_reserved_names_escaped_with_collision_rule() {
 
 #[test]
 fn output_root_rejects_symlink_component() {
-    let base: PathBuf = std::env::temp_dir().join(format!(
-        "rsdeps_paths_symlink_{}",
-        std::process::id()
-    ));
+    let base: PathBuf =
+        std::env::temp_dir().join(format!("rsdeps_paths_symlink_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     let real = base.join("real");
     std::fs::create_dir_all(&real).unwrap();
@@ -69,10 +67,8 @@ fn generated_paths_cannot_escape_root() {
     assert!(validate_generated_path(root, "../graph2/evil.md").is_err());
 
     // Sanity: a plain relative path inside an existing root is accepted.
-    let base: PathBuf = std::env::temp_dir().join(format!(
-        "rsdeps_paths_ok_{}",
-        std::process::id()
-    ));
+    let base: PathBuf =
+        std::env::temp_dir().join(format!("rsdeps_paths_ok_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(&base).unwrap();
     let joined = validate_generated_path(&base, "mod/sub.md").unwrap();
@@ -82,10 +78,8 @@ fn generated_paths_cannot_escape_root() {
 
 #[test]
 fn nonexistent_root_uses_nearest_existing_parent() {
-    let base: PathBuf = std::env::temp_dir().join(format!(
-        "rsdeps_paths_missing_{}",
-        std::process::id()
-    ));
+    let base: PathBuf =
+        std::env::temp_dir().join(format!("rsdeps_paths_missing_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(&base).unwrap();
     let canon = base.canonicalize().unwrap();
