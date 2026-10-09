@@ -556,15 +556,25 @@ fn push_use(
 // `RawUse` against the owning target's module tree and `AnalysisInput.deps`,
 // then dedup + total-order sort.
 //
-// Resolution rules (spec §§11.7/33):
+// Resolution rules (spec §§11.7/33, plus Post-MVP amendment A):
 // * `crate`/`self`/`super`-rooted paths resolve against the owning target's
-//   known module tree. The target owning `from` is found through the
-//   `Module.target_id` field plus the `{package}::{target-name}` prefix —
-//   never by splitting the `ModuleId` to guess the target boundary.
-// * Other paths resolve their first segment against `deps` (real Cargo
+//   known module tree with LONGEST-PREFIX attribution: the full logical path
+//   preferred, else the longest prefix naming a known module (a single-segment
+//   remainder counts). The edge target is always a real discovered module,
+//   never invented. No prefix match at all → `SCOPE001`, no edge. The target
+//   owning `from` is found through the `Module.target_id` field plus the
+//   `{package}::{target-name}` prefix — never by splitting the `ModuleId` to
+//   guess the target boundary.
+// * Bare (`foo::...`) paths first consult the workspace member packages: a
+//   first segment equal to a member package NAME resolves the REMAINDER with
+//   longest-prefix logic across EACH of that member's targets' trees (exactly
+//   one target matches → Internal edge; zero or several → `SCOPE001`, no
+//   edge). Otherwise the first segment resolves against `deps` (real Cargo
 //   package name, never a rename alias; the `RawUse.alias` from `as` never
-//   mints an ID). A path matching both a root-child module and a dep name is
-//   inconclusive: `SCOPE001`, no edge.
+//   mints an ID) exactly as before, including the internal+external
+//   `SCOPE001` ambiguity. Member-match AND external-match → `SCOPE001`, no
+//   edge. `crate`-rooted paths never consult member/external tables;
+//   `self`/`super` never leave the owning tree.
 // * Anything else unresolvable (including globs, which `extract_uses` drops,
 //   re-detected here by re-walking the parsed file) yields `SCOPE001`
 //   `scope collision: <src> -> <path>; unresolved syntactic ownership` and no
@@ -629,12 +639,33 @@ enum Resolution {
     Unresolved(Diagnostic),
 }
 
-/// Resolve one [`RawUse`] against its owning target's tree and the workspace
-/// external deps (name → dep entries; several entries share a name when two
-/// resolved versions coexist).
+/// Longest-prefix module attribution (amendment A1): the full `logical` path
+/// preferred, else the longest strict prefix naming a known module of `ctx`.
+/// A single-segment remainder counts; an empty `logical` names the target
+/// root itself (as before). Returns `None` when not even the first segment
+/// matches — the caller then reports `SCOPE001` with no edge.
+fn longest_prefix_internal(ctx: &TargetCtx, logical: &[String]) -> Option<ModuleId> {
+    if logical.is_empty() {
+        let id = ModuleId(ctx.prefix.clone());
+        return ctx.ids.contains(&id).then_some(id);
+    }
+    for len in (1..=logical.len()).rev() {
+        let candidate = ModuleId(format!("{}::{}", ctx.prefix, logical[..len].join("::")));
+        if ctx.ids.contains(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// Resolve one [`RawUse`] against its owning target's tree, the workspace
+/// member targets (name → per-target contexts, for the bare member arm), and
+/// the workspace external deps (name → dep entries; several entries share a
+/// name when two resolved versions coexist).
 fn resolve_use(
     raw: &RawUse,
     ctx: &TargetCtx,
+    member_ctxs: &HashMap<&str, Vec<&TargetCtx>>,
     deps_by_name: &HashMap<&str, Vec<&crate::metadata::ExternalDep>>,
 ) -> Resolution {
     let display = raw.path.clone();
@@ -674,7 +705,7 @@ fn resolve_use(
     match segments[0] {
         "crate" => {
             let logical: Vec<String> = segments[1..].iter().map(|s| s.to_string()).collect();
-            match internal(&logical) {
+            match longest_prefix_internal(ctx, &logical) {
                 Some(id) => Resolution::Edge(DependencyTarget::Internal(id)),
                 None => unresolved(None),
             }
@@ -685,7 +716,7 @@ fn resolve_use(
                 None => return unresolved(None),
             };
             logical.extend(segments[1..].iter().map(|s| s.to_string()));
-            match internal(&logical) {
+            match longest_prefix_internal(ctx, &logical) {
                 Some(id) => Resolution::Edge(DependencyTarget::Internal(id)),
                 None => unresolved(None),
             }
@@ -702,20 +733,19 @@ fn resolve_use(
                 }
             }
             logical.extend(segments[ups..].iter().map(|s| s.to_string()));
-            match internal(&logical) {
+            match longest_prefix_internal(ctx, &logical) {
                 Some(id) => Resolution::Edge(DependencyTarget::Internal(id)),
                 None => unresolved(None),
             }
         }
         first => {
-            let logical: Vec<String> = segments.iter().map(|s| s.to_string()).collect();
-            let internal_match = internal(&logical);
+            let member_hit = member_ctxs.contains_key(first);
             match deps_by_name.get(first) {
-                None => match internal_match {
-                    Some(id) => Resolution::Edge(DependencyTarget::Internal(id)),
-                    None => unresolved(None),
-                },
-                Some(versions) if versions.len() == 1 => {
+                // Member-match AND external-match: inconclusive, no edge.
+                Some(_) if member_hit => unresolved(None),
+                Some(versions) if versions.len() == 1 && !member_hit => {
+                    let logical: Vec<String> = segments.iter().map(|s| s.to_string()).collect();
+                    let internal_match = internal(&logical);
                     let dep = versions[0];
                     let external = make_external_id(&dep.name, &dep.version);
                     match internal_match {
@@ -729,6 +759,35 @@ fn resolve_use(
                     // ambiguous, so the single mandated SCOPE001 text applies
                     // (no edge), exactly as for any other unresolvable path.
                     unresolved(None)
+                }
+                None if member_hit => {
+                    // Bare member arm (amendment A2/A3): the remainder (after
+                    // the member package name) resolves with longest-prefix
+                    // logic across EACH of the member's targets' trees.
+                    // Exactly one target yields a match → Internal edge to
+                    // it; zero or several → SCOPE001, no edge.
+                    let remainder: Vec<String> =
+                        segments[1..].iter().map(|s| s.to_string()).collect();
+                    let mut hits: Vec<ModuleId> = Vec::new();
+                    if let Some(ctxs) = member_ctxs.get(first) {
+                        for member in ctxs {
+                            if let Some(id) = longest_prefix_internal(member, &remainder) {
+                                hits.push(id);
+                            }
+                        }
+                    }
+                    if hits.len() == 1 {
+                        Resolution::Edge(DependencyTarget::Internal(hits.swap_remove(0)))
+                    } else {
+                        unresolved(None)
+                    }
+                }
+                None => {
+                    let logical: Vec<String> = segments.iter().map(|s| s.to_string()).collect();
+                    match internal(&logical) {
+                        Some(id) => Resolution::Edge(DependencyTarget::Internal(id)),
+                        None => unresolved(None),
+                    }
                 }
             }
         }
@@ -861,6 +920,20 @@ impl Analyzer for SynAnalyzer {
             }
             map
         };
+        // Bare member arm (amendment A2): member package name → each of that
+        // package's targets' resolution contexts. All targets' module sets
+        // already exist above, so cross-target resolution here is complete.
+        let member_ctxs: HashMap<&str, Vec<&TargetCtx>> = {
+            let mut map: HashMap<&str, Vec<&TargetCtx>> = HashMap::new();
+            for target in &input.targets {
+                if let Some(ctx) = ctxs.get(&target.id) {
+                    map.entry(target.package_id.0.as_str())
+                        .or_default()
+                        .push(ctx);
+                }
+            }
+            map
+        };
 
         // 2. Uses + globs + cfg: one `extract_uses` call per file-backed
         // module (each canonical file parsed at most once; shared files get
@@ -950,7 +1023,7 @@ impl Analyzer for SynAnalyzer {
                 diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
                 continue;
             };
-            match resolve_use(raw, ctx, &deps_by_name) {
+            match resolve_use(raw, ctx, &member_ctxs, &deps_by_name) {
                 Resolution::Edge(to) => dependencies.push(Dependency {
                     from: raw.from.clone(),
                     to,

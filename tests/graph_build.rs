@@ -41,12 +41,38 @@ fn lib_target(pkg: &str, name: &str, root: PathBuf) -> Target {
     }
 }
 
+fn bin_target(pkg: &str, name: &str, root: PathBuf) -> Target {
+    Target {
+        id: make_target_id(pkg, "bin", name).unwrap(),
+        package_id: rsdeps2obsidian::ids::PackageId(pkg.to_string()),
+        name: name.to_string(),
+        kind: TargetKind::Bin,
+        root_source: root,
+    }
+}
+
 fn input(dir: &Path, target: Target, deps: Vec<ExternalDep>) -> AnalysisInput {
     AnalysisInput {
         workspace_root: dir.to_path_buf(),
         targets: vec![target],
         deps,
     }
+}
+
+fn multi_input(dir: &Path, targets: Vec<Target>, deps: Vec<ExternalDep>) -> AnalysisInput {
+    AnalysisInput {
+        workspace_root: dir.to_path_buf(),
+        targets,
+        deps,
+    }
+}
+
+fn scope001s(graph: &WorkspaceGraph) -> Vec<&Diagnostic> {
+    graph
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "SCOPE001")
+        .collect()
 }
 
 fn edge_kind(deps: &[Dependency], from: &str, to: &str) -> Option<DependencyKind> {
@@ -100,6 +126,212 @@ fn self_super_crate_paths_resolve_internally() {
     // Dependencies are totally ordered by `from`.
     let froms: Vec<&str> = graph.dependencies.iter().map(|d| d.from.0.as_str()).collect();
     assert_eq!(froms, vec!["t6a::t6a", "t6a::t6a", "t6a::t6a::foo"]);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn crate_rooted_item_import_resolves_to_longest_prefix_module() {
+    // `User`/`Admin` are items, not modules; `models` IS a module, so both
+    // imports attribute to `t7a::t7a::models` with their own kind (Use vs
+    // ReExport). Dedup collapses the three (from, to) winners to ReExport.
+    let dir = tmpdir("crate-item-prefix");
+    write_file(
+        &dir.join("lib.rs"),
+        "mod models;\nuse crate::models::User;\npub use crate::models::Admin;\n",
+    );
+    write_file(
+        &dir.join("models.rs"),
+        "pub struct User;\npub struct Admin;\n",
+    );
+
+    let target = lib_target("t7a", "t7a", dir.join("lib.rs"));
+    let graph = SynAnalyzer.analyze(&input(&dir, target, vec![])).unwrap();
+
+    assert!(scope001s(&graph).is_empty(), "{:?}", graph.diagnostics);
+    assert_eq!(graph.dependencies.len(), 1, "{:?}", graph.dependencies);
+    assert_eq!(
+        edge_kind(&graph.dependencies, "t7a::t7a", "t7a::t7a::models"),
+        Some(DependencyKind::ReExport)
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn crate_self_super_item_imports_prefer_full_match_else_prefix() {
+    // `models::sub` IS a module, `Item`/`User` are items: full match beats
+    // prefix for `crate::models::sub::Item`, while `self::`/`super::` paths
+    // attribute to their longest known prefix.
+    let dir = tmpdir("crate-full-beats-prefix");
+    write_file(
+        &dir.join("lib.rs"),
+        "mod models;\nuse crate::models::sub::Item;\n",
+    );
+    write_file(
+        &dir.join("models.rs"),
+        "pub mod sub;\npub struct User;\nuse self::sub::Item;\n",
+    );
+    write_file(
+        &dir.join("models/sub.rs"),
+        "pub struct Item;\nuse super::User;\n",
+    );
+
+    let target = lib_target("t7b", "t7b", dir.join("lib.rs"));
+    let graph = SynAnalyzer.analyze(&input(&dir, target, vec![])).unwrap();
+
+    assert!(scope001s(&graph).is_empty(), "{:?}", graph.diagnostics);
+    // root -> models (Module), root -> models::sub (Use),
+    // models -> models::sub (Module + Use collapse to Use),
+    // models::sub -> models (Use).
+    assert_eq!(graph.dependencies.len(), 4, "{:?}", graph.dependencies);
+    assert_eq!(
+        edge_kind(&graph.dependencies, "t7b::t7b", "t7b::t7b::models"),
+        Some(DependencyKind::Module)
+    );
+    assert_eq!(
+        edge_kind(&graph.dependencies, "t7b::t7b", "t7b::t7b::models::sub"),
+        Some(DependencyKind::Use)
+    );
+    assert_eq!(
+        edge_kind(
+            &graph.dependencies,
+            "t7b::t7b::models",
+            "t7b::t7b::models::sub"
+        ),
+        Some(DependencyKind::Use)
+    );
+    assert_eq!(
+        edge_kind(
+            &graph.dependencies,
+            "t7b::t7b::models::sub",
+            "t7b::t7b::models"
+        ),
+        Some(DependencyKind::Use)
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn crate_rooted_unknown_prefix_stays_scope001() {
+    // `ghost` names no known module (not even the first segment), so current
+    // behavior holds: SCOPE001 with the exact text, no edge.
+    let dir = tmpdir("crate-ghost");
+    write_file(&dir.join("lib.rs"), "use crate::ghost::Item;\n");
+
+    let target = lib_target("t7c", "t7c", dir.join("lib.rs"));
+    let graph = SynAnalyzer.analyze(&input(&dir, target, vec![])).unwrap();
+
+    let scope = scope001s(&graph);
+    assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
+    assert_eq!(
+        scope[0].message,
+        "scope collision: t7c::t7c -> crate::ghost::Item; unresolved syntactic ownership"
+    );
+    assert!(graph.dependencies.is_empty(), "{:?}", graph.dependencies);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn bare_member_import_resolves_into_member_target() {
+    // `core` is a workspace member package (not an external dep): the
+    // remainder `models` resolves against core's target tree.
+    let dir = tmpdir("bare-member");
+    write_file(&dir.join("app/lib.rs"), "use core::models;\n");
+    write_file(
+        &dir.join("core/lib.rs"),
+        "mod models;\nuse crate::models;\n",
+    );
+    write_file(&dir.join("core/models.rs"), "pub struct User;\n");
+
+    let app = lib_target("app", "app", dir.join("app/lib.rs"));
+    let core = lib_target("core", "core", dir.join("core/lib.rs"));
+    let graph = SynAnalyzer
+        .analyze(&multi_input(&dir, vec![app, core], vec![]))
+        .unwrap();
+
+    assert!(scope001s(&graph).is_empty(), "{:?}", graph.diagnostics);
+    assert_eq!(
+        edge_kind(&graph.dependencies, "app::app", "core::core::models"),
+        Some(DependencyKind::Use)
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn bare_member_and_external_both_match_warns_scope001() {
+    // `core` is BOTH a member package and an external dep name: ambiguous,
+    // so SCOPE001 with the exact text and neither an internal nor an
+    // external edge for the importing module.
+    let dir = tmpdir("bare-both-match");
+    write_file(&dir.join("app/lib.rs"), "use core::models;\n");
+    write_file(&dir.join("core/lib.rs"), "mod models;\n");
+    write_file(&dir.join("core/models.rs"), "pub struct User;\n");
+
+    let app = lib_target("app", "app", dir.join("app/lib.rs"));
+    let core = lib_target("core", "core", dir.join("core/lib.rs"));
+    let deps = vec![ExternalDep {
+        name: "core".to_string(),
+        version: "1.0.0".to_string(),
+    }];
+    let graph = SynAnalyzer
+        .analyze(&multi_input(&dir, vec![app, core], deps))
+        .unwrap();
+
+    let scope = scope001s(&graph);
+    assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
+    assert_eq!(
+        scope[0].message,
+        "scope collision: app::app -> core::models; unresolved syntactic ownership"
+    );
+    assert_eq!(
+        edge_kind(&graph.dependencies, "app::app", "core::core::models"),
+        None
+    );
+    assert!(
+        graph.dependencies.iter().all(|d| d.from.0 != "app::app"),
+        "{:?}",
+        graph.dependencies
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn bare_member_multi_target_ambiguity_warns_scope001() {
+    // The remainder `models` matches in BOTH of member `core`'s targets (lib
+    // and bin share one backing file as distinct logical modules), so the
+    // owning target is ambiguous: SCOPE001, no edge.
+    let dir = tmpdir("bare-member-ambiguous");
+    write_file(&dir.join("app/lib.rs"), "use core::models;\n");
+    write_file(&dir.join("core/lib.rs"), "mod models;\n");
+    write_file(&dir.join("core/tool.rs"), "mod models;\nfn main() {}\n");
+    write_file(&dir.join("core/models.rs"), "pub struct User;\n");
+
+    let app = lib_target("app", "app", dir.join("app/lib.rs"));
+    let core_lib = lib_target("core", "core", dir.join("core/lib.rs"));
+    let core_bin = bin_target("core", "tool", dir.join("core/tool.rs"));
+    let graph = SynAnalyzer
+        .analyze(&multi_input(&dir, vec![app, core_lib, core_bin], vec![]))
+        .unwrap();
+
+    let scope = scope001s(&graph);
+    assert_eq!(scope.len(), 1, "{:?}", graph.diagnostics);
+    assert_eq!(
+        scope[0].message,
+        "scope collision: app::app -> core::models; unresolved syntactic ownership"
+    );
+    assert_eq!(
+        edge_kind(&graph.dependencies, "app::app", "core::core::models"),
+        None
+    );
+    assert_eq!(
+        edge_kind(&graph.dependencies, "app::app", "core::tool::models"),
+        None
+    );
 
     let _ = std::fs::remove_dir_all(&dir);
 }

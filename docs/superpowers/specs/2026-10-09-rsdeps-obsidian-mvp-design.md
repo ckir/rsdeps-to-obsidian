@@ -224,3 +224,47 @@ stdin-never-read / stdout-human / stderr-diagnostics split, map errors to exit
   `"index.md"`); plan does not revisit this.
 - Golden-fixture workspace contents under `tests/` — plan enumerates.
 - Golden-fixture workspace contents under `tests/` — plan enumerates.
+
+## Post-MVP amendment A (2026-10-09): cross-package edges + prefix attribution
+
+Owner-approved scope expansion amending the MVP (§2 scope resolution only).
+All other sections (ModuleId shape, manifest/commit/paths, CFG001/MOD002,
+dedup/ordering, diagnostic texts) are unchanged.
+
+- **A1. Prefix attribution (owning target only):** for `crate::`/`self::`/
+  `super::`-rooted paths (after `super` climbs), resolve the LONGEST prefix
+  that names a known module in the owning target's tree (full match preferred;
+  else longest prefix; single-segment remainder counts). Emit one Internal
+  edge to that module with the RawUse's kind (Use/ReExport). If NO prefix (not
+  even the first segment) matches any known module → current behavior
+  (SCOPE001, no edge). Rationale: module-level approximation; the edge target
+  is always a real discovered module, never invented.
+- **A2. Bare paths (`foo::...`):** unchanged EXCEPT a new member-package arm.
+  First-segment lookup order: (i) workspace member package whose package NAME
+  equals the segment → resolve the REMAINDER per A3; (ii) external deps by real
+  Cargo name (as before). Member-match AND external-match → SCOPE001
+  ambiguous, no edge. Neither → SCOPE001 as before (including the existing
+  internal root-child fallback and internal+external ambiguity). A member
+  match without an external match resolves per A3 even if a root-child module
+  shares the name (member arm fires first); `as` aliases never mint identity
+  (unchanged).
+- **A3. Member remainder resolution:** within the matched member package,
+  gather longest-prefix matches (per A1 logic) across EACH of its targets'
+  module trees. Exactly one target yields a match → Internal edge to it. Zero
+  → SCOPE001 (same exact text). More than one target matches → SCOPE001
+  ambiguous, no edge. Deterministic in all cases (hit counting is
+  order-independent).
+- **A4. Non-goals nailed down:** `crate::`-rooted paths NEVER consult
+  member/external tables; `self`/`super` NEVER leave the owning tree.
+- **A5. Structure:** `analyze()` builds all targets' module sets before any
+  cross-target resolution (already the case); public signatures (`Analyzer`,
+  `AnalysisInput`, graph/diag APIs) are stable — the change is confined to the
+  private `resolve_use` plus a `longest_prefix_internal` helper and a
+  member-name → target-contexts map built inside `analyze()`.
+
+Observed golden impact on the `full-workspace` fixture: dependencies 24 → 26
+(+`api::api → core::core::models` member edge, +`api::api::models →
+api::api::services` prefix edge; the other 7 newly-resolved item imports
+collapse into existing keys, one upgrading `api::api → api::api::services`
+from Module to Use), warnings 11 → 2 (−9 SCOPE001, +0 new; CFG001 + MOD002
+remain). Packages/targets/modules/externals/file set unchanged.
