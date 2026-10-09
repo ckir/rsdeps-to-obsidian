@@ -8,3 +8,4 @@ pub mod domain;
 pub mod ids;
 pub mod metadata;
 pub mod paths;
+pub mod resolver;

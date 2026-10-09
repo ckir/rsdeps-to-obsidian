@@ -14,3 +14,5 @@ path = "src/bin/rsdeps2obsidian.rs"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 cargo_metadata = "0.23"
+syn = { version = "2", features = ["full", "clone-impls"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
