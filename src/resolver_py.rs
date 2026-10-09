@@ -31,7 +31,8 @@
 //!   unless the import is relative (`level > 0`), which can never name an
 //!   external and is always `SCOPE001` on a miss.
 //! * An absolute import whose first segment is the owning target's own
-//!   package name strips it — when the owning tree itself misses — and
+//!   package name (compared normalized — lowercase, `-` → `_` — so a
+//!   hyphenated distribution still owns its import namespace) strips it — when the owning tree itself misses — and
 //!   longest-prefix-resolves the remainder against the package's `Lib`
 //!   trees: exactly one match → `Internal`, zero or several → `SCOPE001`
 //!   (own namespace is never external). Trying the owning tree first keeps
@@ -887,6 +888,15 @@ fn longest_prefix(
     (None, 0)
 }
 
+/// Guard-only package-name normalization (lowercase, `-` → `_`): a
+/// hyphenated or uppercase distribution name (`my-pkg`) still owns the
+/// matching import namespace (`my_pkg`). Applies ONLY to the own-package
+/// guard comparison — display paths, diagnostics, `ModuleId`s, and edge
+/// targets stay verbatim.
+fn norm_pkg_name(s: &str) -> String {
+    s.to_ascii_lowercase().replace('-', "_")
+}
+
 fn resolve_use(
     raw: &PyUse,
     pkg: &str,
@@ -907,7 +917,11 @@ fn resolve_use(
     // never tries length 0, so a root-only tree matches no real remainder.
     // Exactly one `Lib` match → `Internal`; zero or several → `SCOPE001`
     // (own namespace is never external).
-    if hit.is_none() && raw.level == 0 && raw.dotted[0] == pkg && !lib_trees.is_empty() {
+    if hit.is_none()
+        && raw.level == 0
+        && norm_pkg_name(&raw.dotted[0]) == norm_pkg_name(pkg)
+        && !lib_trees.is_empty()
+    {
         let remainder = &raw.dotted[1..];
         let mut hits: Vec<ModuleId> = Vec::new();
         for lib in lib_trees {

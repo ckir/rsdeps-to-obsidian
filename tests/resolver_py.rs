@@ -513,3 +513,34 @@ fn nested_owning_tree_match_stays_primary() {
         graph.diagnostics
     );
 }
+
+#[test]
+fn own_package_guard_normalizes_hyphen() {
+    // Hyphenated distribution `my-pkg` owns the `my_pkg` import namespace:
+    // `import my_pkg.models` is an Internal edge to the Lib module, never
+    // EXT001, and the edge target keeps its verbatim `my-pkg` ModuleId.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::write(root.join("models.py"), "VALUE = 1\n").unwrap();
+    std::fs::write(root.join("ship.py"), "import my_pkg.models\n").unwrap();
+    let graph = analyze(&AnalysisInput {
+        workspace_root: root.to_path_buf(),
+        targets: vec![
+            lib_target("my-pkg", "my-pkg", root.to_path_buf()),
+            bin_target("my-pkg", "ship", root.join("ship.py")),
+        ],
+        deps: vec![],
+    });
+    assert!(
+        graph.dependencies.iter().any(|d| d.from.0 == "my-pkg::ship"
+            && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "my-pkg::my-pkg::models")
+            && matches!(d.kind, DependencyKind::Use)),
+        "normalized own-package edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        graph.diagnostics.iter().all(|d| d.code != "EXT001"),
+        "own namespace is never external: {:?}",
+        graph.diagnostics
+    );
+}

@@ -24,9 +24,11 @@
 //!   stem as the target name. Each `[project.scripts]` entry contributes a
 //!   Bin too: when `foo = "pkg.mod:main"` resolves to an existing module
 //!   file (`<import-root>/pkg/mod.py` or `<import-root>/pkg/mod/__init__.py`)
-//!   the Bin is named `foo`; otherwise it falls back to the module stem
-//!   (`mod`) with a best-effort (possibly nonexistent) path. A script name
-//!   that collides with a file-scan Bin overwrites it. The table is parsed
+//!   the Bin is named `foo` (overwriting a file-scan Bin on collision);
+//!   otherwise it falls back to the module stem (`mod`) with a best-effort
+//!   (possibly nonexistent) path that never replaces a file-scan Bin
+//!   (first-real-wins). Entries whose dot-segments are not all valid Python
+//!   identifiers are skipped silently. The table is parsed
 //!   only, never executed.
 //! - Versions: `==` pins from every `requirements*.txt` in the root and
 //!   from `[project] dependencies`, plus `name`/`version` pairs from each
@@ -238,6 +240,20 @@ fn collect_main_modules(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// Whether `segment` is a valid Python identifier (ASCII approximation:
+/// non-empty, `[A-Za-z0-9_]`, not starting with a digit). The `[project.scripts]`
+/// guess path joins dot-segments into a relative path, so anything else
+/// (`/etc/passwd`, `..`, empty segments) could escape the import root and
+/// must be skipped instead.
+fn is_py_ident(segment: &str) -> bool {
+    let mut chars = segment.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 /// Resolve `pkg.mod` to `<import_root>/pkg/mod.py`, else
 /// `<import_root>/pkg/mod/__init__.py`, else `None`.
 fn resolve_module_file(import_root: &Path, dotted: &str) -> Option<PathBuf> {
@@ -377,6 +393,13 @@ pub fn discover_py(config: &Config) -> Result<DiscoveredWorkspace, String> {
             if stem.is_empty() {
                 continue;
             }
+            // Unvalidated dot-segments could escape the import root on the
+            // guess path (`/etc/passwd:main` joins absolute, `..` climbs
+            // out), so entries with a non-identifier segment are skipped
+            // silently — the same treatment malformed values already get.
+            if !dotted.split('.').all(is_py_ident) {
+                continue;
+            }
             match resolve_module_file(&import_root, dotted) {
                 Some(path) => {
                     bins.insert(name.clone(), path);
@@ -389,7 +412,9 @@ pub fn discover_py(config: &Config) -> Result<DiscoveredWorkspace, String> {
                         }
                         import_root.join(&rel).with_extension("py")
                     };
-                    bins.insert(stem, guess);
+                    // First-real-wins: a live file-scan Bin on this stem is
+                    // never replaced by a missing-module guess.
+                    bins.entry(stem).or_insert(guess);
                 }
             }
         }

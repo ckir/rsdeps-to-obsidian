@@ -159,3 +159,70 @@ fn pins_and_lockfiles() {
         "external_deps: {ws:?}"
     );
 }
+
+#[test]
+fn miss_arm_never_clobbers_real_bin() {
+    // A real `run.py` plus a ghost `[project.scripts]` entry whose module
+    // stem is also `run` (`nosuch.run:main`): first-real-wins, so Bin `run`
+    // keeps the live file and the real module does not vanish.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::write(root.join("run.py"), "print('real')\n").unwrap();
+    std::fs::write(
+        root.join("pyproject.toml"),
+        "[project]\nname = \"demo\"\n\n[project.scripts]\nghost = \"nosuch.run:main\"\n",
+    )
+    .unwrap();
+    let ws = discover_py(&py_config(root.to_path_buf())).expect("discovery succeeds");
+
+    let runs: Vec<_> = ws
+        .targets
+        .iter()
+        .filter(|t| t.id.0 == "demo::bin::run")
+        .collect();
+    assert_eq!(runs.len(), 1, "one surviving run Bin: {ws:?}");
+    assert!(
+        runs[0].root_source.ends_with("run.py") && runs[0].root_source.is_file(),
+        "Bin run keeps the real file: {ws:?}"
+    );
+    assert!(
+        ws.targets
+            .iter()
+            .all(|t| !t.root_source.to_string_lossy().contains("nosuch")),
+        "no phantom guess path anywhere: {ws:?}"
+    );
+}
+
+#[test]
+fn hostile_script_values_produce_no_bin() {
+    // Absolute (`/etc/passwd`), climbing (`..`), empty-segment (`a..b`),
+    // and digit-led (`9lives`) dotted values are skipped silently — no Bin,
+    // no diagnostic, and no path outside the project root is referenced.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::write(
+        root.join("pyproject.toml"),
+        "[project]\nname = \"demo\"\n\n[project.scripts]\n\
+         evil = \"/etc/passwd:main\"\n\
+         climb = \"../escape:main\"\n\
+         dotted = \"a..b:main\"\n\
+         digit = \"9lives:main\"\n",
+    )
+    .unwrap();
+    let ws = discover_py(&py_config(root.to_path_buf())).expect("discovery succeeds");
+
+    let bins: Vec<_> = ws
+        .targets
+        .iter()
+        .filter(|t| matches!(t.kind, TargetKind::Bin))
+        .collect();
+    assert!(bins.is_empty(), "hostile values emit no Bin: {ws:?}");
+    let canon = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    assert!(
+        ws.targets.iter().all(|t| {
+            let p = std::fs::canonicalize(&t.root_source).unwrap_or(t.root_source.clone());
+            p.starts_with(&canon) || t.root_source.starts_with(root)
+        }),
+        "nothing outside the project root is referenced: {ws:?}"
+    );
+}
