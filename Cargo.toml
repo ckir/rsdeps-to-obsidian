@@ -1,0 +1,15 @@
+[package]
+name = "rsdeps2obsidian"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rsdeps2obsidian"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rsdeps2obsidian"
+path = "src/bin/rsdeps2obsidian.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
