@@ -1,0 +1,17 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+autobins = false
+
+[[bin]]
+name = "alpha"
+path = "src/bin/alpha.rs"
+
+[[bin]]
+name = "beta"
+path = "src/bin/beta.rs"
+
+[dependencies]
+core = { path = "../core" }
+serde = "=1.0.229"

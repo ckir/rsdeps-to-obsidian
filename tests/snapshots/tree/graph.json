@@ -1,0 +1,448 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.4.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "packages": [
+    {
+      "id": "api",
+      "name": "api",
+      "manifest_path": "@@WORKSPACE@@/crates/api/Cargo.toml"
+    },
+    {
+      "id": "core",
+      "name": "core",
+      "manifest_path": "@@WORKSPACE@@/crates/core/Cargo.toml"
+    }
+  ],
+  "targets": [
+    {
+      "id": "api::bin::alpha",
+      "package_id": "api",
+      "name": "alpha",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/crates/api/src/bin/alpha.rs"
+    },
+    {
+      "id": "api::bin::beta",
+      "package_id": "api",
+      "name": "beta",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/crates/api/src/bin/beta.rs"
+    },
+    {
+      "id": "api::lib::api",
+      "package_id": "api",
+      "name": "api",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/crates/api/src/lib.rs"
+    },
+    {
+      "id": "core::lib::core",
+      "package_id": "core",
+      "name": "core",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/crates/core/src/lib.rs"
+    }
+  ],
+  "modules": [
+    {
+      "id": "api::alpha",
+      "target_id": "api::bin::alpha",
+      "name": "alpha",
+      "qualified_name": "crate",
+      "source_path": "@@WORKSPACE@@/crates/api/src/bin/alpha.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::alpha::shared",
+      "target_id": "api::bin::alpha",
+      "name": "shared",
+      "qualified_name": "crate::shared",
+      "source_path": "@@WORKSPACE@@/crates/api/src/bin/shared.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api",
+      "target_id": "api::lib::api",
+      "name": "api",
+      "qualified_name": "crate",
+      "source_path": "@@WORKSPACE@@/crates/api/src/lib.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::con",
+      "target_id": "api::lib::api",
+      "name": "con",
+      "qualified_name": "crate::con",
+      "source_path": "@@WORKSPACE@@/crates/api/src/con.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::gated",
+      "target_id": "api::lib::api",
+      "name": "gated",
+      "qualified_name": "crate::gated",
+      "source_path": "@@WORKSPACE@@/crates/api/src/gated.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::inline_parent",
+      "target_id": "api::lib::api",
+      "name": "inline_parent",
+      "qualified_name": "crate::inline_parent",
+      "source_path": null,
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 11,
+        "line_end": 14
+      }
+    },
+    {
+      "id": "api::api::inline_parent::inline_child",
+      "target_id": "api::lib::api",
+      "name": "inline_child",
+      "qualified_name": "crate::inline_parent::inline_child",
+      "source_path": null,
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 12,
+        "line_end": 12
+      }
+    },
+    {
+      "id": "api::api::models",
+      "target_id": "api::lib::api",
+      "name": "models",
+      "qualified_name": "crate::models",
+      "source_path": "@@WORKSPACE@@/crates/api/src/models.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::qux",
+      "target_id": "api::lib::api",
+      "name": "qux",
+      "qualified_name": "crate::qux",
+      "source_path": "@@WORKSPACE@@/crates/api/src/qux.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::renamed",
+      "target_id": "api::lib::api",
+      "name": "renamed",
+      "qualified_name": "crate::renamed",
+      "source_path": "@@WORKSPACE@@/crates/api/src/special/renamed.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::routes",
+      "target_id": "api::lib::api",
+      "name": "routes",
+      "qualified_name": "crate::routes",
+      "source_path": "@@WORKSPACE@@/crates/api/src/routes.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::services",
+      "target_id": "api::lib::api",
+      "name": "services",
+      "qualified_name": "crate::services",
+      "source_path": "@@WORKSPACE@@/crates/api/src/services.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::api::services::deep",
+      "target_id": "api::lib::api",
+      "name": "deep",
+      "qualified_name": "crate::services::deep",
+      "source_path": "@@WORKSPACE@@/crates/api/src/services/deep.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::beta",
+      "target_id": "api::bin::beta",
+      "name": "beta",
+      "qualified_name": "crate",
+      "source_path": "@@WORKSPACE@@/crates/api/src/bin/beta.rs",
+      "source_span": null
+    },
+    {
+      "id": "api::beta::shared",
+      "target_id": "api::bin::beta",
+      "name": "shared",
+      "qualified_name": "crate::shared",
+      "source_path": "@@WORKSPACE@@/crates/api/src/bin/shared.rs",
+      "source_span": null
+    },
+    {
+      "id": "core::core",
+      "target_id": "core::lib::core",
+      "name": "core",
+      "qualified_name": "crate",
+      "source_path": "@@WORKSPACE@@/crates/core/src/lib.rs",
+      "source_span": null
+    },
+    {
+      "id": "core::core::models",
+      "target_id": "core::lib::core",
+      "name": "models",
+      "qualified_name": "crate::models",
+      "source_path": "@@WORKSPACE@@/crates/core/src/models.rs",
+      "source_span": null
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "api::alpha",
+      "to": "api::alpha::shared",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::con",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::gated",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::inline_parent",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "re_export"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::qux",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::renamed",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::routes",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::services",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api",
+      "to": "api::api::services::deep",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api",
+      "to": "serde@1.0.229",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::con",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::inline_parent",
+      "to": "api::api::inline_parent::inline_child",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "api::api::inline_parent",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::models",
+      "to": "api::api::routes",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::qux",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::renamed",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::routes",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::routes",
+      "to": "api::api::services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::services",
+      "to": "api::api::services::deep",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::api::services::deep",
+      "to": "api::api::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::beta",
+      "to": "api::beta::shared",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "api::beta",
+      "to": "serde@1.0.229",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "core::core",
+      "to": "core::core::models",
+      "target_type": "internal",
+      "kind": "use"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "CFG001",
+      "message": "conditional compilation detected - graph reflects unexpanded source",
+      "source_span": null
+    },
+    {
+      "severity": "warning",
+      "code": "MOD002",
+      "message": "ambiguous module layout: both @@WORKSPACE@@/crates/api/src/qux.rs and @@WORKSPACE@@/crates/api/src/qux/mod.rs exist; using @@WORKSPACE@@/crates/api/src/qux.rs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 6,
+        "line_end": 6
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::alpha -> crate::shared::Help; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/bin/alpha.rs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api -> crate::models::User; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 18,
+        "line_end": 18
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api -> crate::routes::Router; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 20,
+        "line_end": 20
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api -> crate::services::Worker; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 22,
+        "line_end": 22
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api -> core::models; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 23,
+        "line_end": 23
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api -> self::services::Worker; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/lib.rs",
+        "line_start": 29,
+        "line_end": 30
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api::models -> crate::services::Worker; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/models.rs",
+        "line_start": 10,
+        "line_end": 10
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api::routes -> crate::models::User; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/routes.rs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: api::api::services -> crate::services::deep::Job; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/crates/api/src/services.rs",
+        "line_start": 8,
+        "line_end": 8
+      }
+    }
+  ]
+}

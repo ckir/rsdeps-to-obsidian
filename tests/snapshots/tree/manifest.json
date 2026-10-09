@@ -1,0 +1,98 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.4.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "generated_files": [
+    "api__alpha.md",
+    "api__alpha__shared.md",
+    "api__api.md",
+    "api__api__con.md",
+    "api__api__gated.md",
+    "api__api__inline___parent.md",
+    "api__api__inline___parent__inline___child.md",
+    "api__api__models.md",
+    "api__api__qux.md",
+    "api__api__renamed.md",
+    "api__api__routes.md",
+    "api__api__services.md",
+    "api__api__services__deep.md",
+    "api__beta.md",
+    "api__beta__shared.md",
+    "core__core.md",
+    "core__core__models.md",
+    "graph.json",
+    "index.md",
+    "rust-external-serde__1.0.229.md"
+  ],
+  "module_records": [
+    {
+      "module_id": "api::alpha",
+      "filename": "api__alpha.md"
+    },
+    {
+      "module_id": "api::alpha::shared",
+      "filename": "api__alpha__shared.md"
+    },
+    {
+      "module_id": "api::api",
+      "filename": "api__api.md"
+    },
+    {
+      "module_id": "api::api::con",
+      "filename": "api__api__con.md"
+    },
+    {
+      "module_id": "api::api::gated",
+      "filename": "api__api__gated.md"
+    },
+    {
+      "module_id": "api::api::inline_parent",
+      "filename": "api__api__inline___parent.md"
+    },
+    {
+      "module_id": "api::api::inline_parent::inline_child",
+      "filename": "api__api__inline___parent__inline___child.md"
+    },
+    {
+      "module_id": "api::api::models",
+      "filename": "api__api__models.md"
+    },
+    {
+      "module_id": "api::api::qux",
+      "filename": "api__api__qux.md"
+    },
+    {
+      "module_id": "api::api::renamed",
+      "filename": "api__api__renamed.md"
+    },
+    {
+      "module_id": "api::api::routes",
+      "filename": "api__api__routes.md"
+    },
+    {
+      "module_id": "api::api::services",
+      "filename": "api__api__services.md"
+    },
+    {
+      "module_id": "api::api::services::deep",
+      "filename": "api__api__services__deep.md"
+    },
+    {
+      "module_id": "api::beta",
+      "filename": "api__beta.md"
+    },
+    {
+      "module_id": "api::beta::shared",
+      "filename": "api__beta__shared.md"
+    },
+    {
+      "module_id": "core::core",
+      "filename": "core__core.md"
+    },
+    {
+      "module_id": "core::core::models",
+      "filename": "core__core__models.md"
+    }
+  ]
+}
