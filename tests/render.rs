@@ -244,3 +244,153 @@ fn manifest_shape_and_determinism() {
     assert!(read_manifest(&path).is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Shared-ModuleId regression (lib + bin roots share a name, spec-legal):
+/// two modules with the IDENTICAL ModuleId string but distinct target_ids
+/// must get distinct filenames with correct per-target frontmatter, and a
+/// link to the shared id resolves to the first file in module sort order.
+fn shared_id_graph() -> (WorkspaceGraph, PathBuf) {
+    let root = workspace_root();
+    let package_id = PackageId("pkg".to_string());
+    let lib_target = make_target_id("pkg", "lib", "pkg").unwrap();
+    let bin_target = make_target_id("pkg", "bin", "pkg").unwrap();
+    let targets = vec![
+        Target {
+            id: bin_target.clone(),
+            package_id: package_id.clone(),
+            name: "pkg".to_string(),
+            kind: TargetKind::Bin,
+            root_source: root.join("src/main.rs"),
+        },
+        Target {
+            id: lib_target.clone(),
+            package_id: package_id.clone(),
+            name: "pkg".to_string(),
+            kind: TargetKind::Lib,
+            root_source: root.join("src/lib.rs"),
+        },
+    ];
+    let modules = vec![
+        Module {
+            id: ModuleId("pkg::pkg".to_string()),
+            target_id: lib_target.clone(),
+            name: "pkg".to_string(),
+            qualified_name: "pkg::pkg".to_string(),
+            source_path: Some(root.join("src/lib.rs")),
+            source_span: None,
+        },
+        Module {
+            id: ModuleId("pkg::pkg".to_string()),
+            target_id: bin_target.clone(),
+            name: "pkg".to_string(),
+            qualified_name: "pkg::pkg".to_string(),
+            source_path: Some(root.join("src/main.rs")),
+            source_span: None,
+        },
+        Module {
+            id: ModuleId("pkg::pkg::user".to_string()),
+            target_id: lib_target.clone(),
+            name: "user".to_string(),
+            qualified_name: "pkg::pkg::user".to_string(),
+            source_path: Some(root.join("src/user.rs")),
+            source_span: None,
+        },
+    ];
+    let dependencies = vec![Dependency {
+        from: ModuleId("pkg::pkg::user".to_string()),
+        to: DependencyTarget::Internal(ModuleId("pkg::pkg".to_string())),
+        kind: DependencyKind::Use,
+        source_span: None,
+    }];
+    let graph = WorkspaceGraph {
+        packages: vec![Package {
+            id: package_id,
+            name: "pkg".to_string(),
+            manifest_path: root.join("Cargo.toml"),
+        }],
+        targets,
+        modules,
+        dependencies,
+        diagnostics: vec![],
+    };
+    (graph, root)
+}
+
+#[test]
+fn shared_module_id_gets_distinct_filenames() {
+    let (graph, root) = shared_id_graph();
+    let rendered = render_all(&graph, &root, false);
+    // 2 shared-id roots + 1 dependent + index.
+    assert_eq!(rendered.len(), 4, "rendered: {rendered:?}");
+    let roots: Vec<_> = rendered
+        .iter()
+        .filter(|f| f.content.contains("module_id: pkg::pkg\n"))
+        .collect();
+    assert_eq!(roots.len(), 2, "both roots must be emitted: {rendered:?}");
+    assert_ne!(
+        roots[0].rel_path, roots[1].rel_path,
+        "distinct (target_id, module_id) identities need distinct filenames"
+    );
+    // ModuleId strings are frozen (§9.3): both notes carry the same id…
+    for r in &roots {
+        assert!(r.content.contains("module_id: pkg::pkg\n"));
+    }
+    // …but per-target frontmatter distinguishes them.
+    let targets: Vec<_> = roots
+        .iter()
+        .map(|r| {
+            r.content
+                .lines()
+                .find(|l| l.starts_with("target_id: "))
+                .unwrap_or("target_id: MISSING")
+                .to_string()
+        })
+        .collect();
+    assert!(targets.contains(&"target_id: pkg::lib::pkg".to_string()), "{targets:?}");
+    assert!(targets.contains(&"target_id: pkg::bin::pkg".to_string()), "{targets:?}");
+    // Link to the shared id resolves to the first file in module sort order
+    // ((module_id, target_id): the bin root sorts before the lib root).
+    let user = rendered
+        .iter()
+        .find(|f| f.content.contains("module_id: pkg::pkg::user\n"))
+        .expect("dependent note missing");
+    let first = roots
+        .iter()
+        .find(|r| r.content.contains("target_id: pkg::bin::pkg\n"))
+        .expect("bin root note missing");
+    let expected = format!(
+        "[[{}|pkg::pkg]]",
+        first.rel_path.strip_suffix(".md").unwrap_or(&first.rel_path)
+    );
+    assert!(
+        user.content.contains(&expected),
+        "link must resolve to first in sort order ({expected}):\n{}",
+        user.content
+    );
+}
+
+#[test]
+fn shared_module_id_manifest_has_no_duplicates() {
+    let (graph, root) = shared_id_graph();
+    let rendered = render_all(&graph, &root, false);
+    let manifest = build_manifest(&rendered, &graph);
+    let mut rels: Vec<&str> = rendered.iter().map(|f| f.rel_path.as_str()).collect();
+    rels.sort();
+    rels.dedup();
+    assert_eq!(
+        rels.len(),
+        rendered.len(),
+        "generated_files must be duplicate-free: {rendered:?}"
+    );
+    assert_eq!(manifest.generated_files.len(), rendered.len());
+    let shared: Vec<_> = manifest
+        .module_records
+        .iter()
+        .filter(|r| r.module_id == "pkg::pkg")
+        .collect();
+    assert_eq!(shared.len(), 2, "one record per module: {:?}", manifest.module_records);
+    assert_ne!(
+        shared[0].filename, shared[1].filename,
+        "records sharing module_id must carry distinct filenames"
+    );
+}

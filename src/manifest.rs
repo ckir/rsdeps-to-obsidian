@@ -35,7 +35,11 @@ pub struct Manifest {
 }
 
 /// Build the manifest for one render: `generated_files` sorted,
-/// `module_records` sorted by `module_id`.
+/// `module_records` sorted by (`module_id`, `filename`). One record per
+/// module: records may share `module_id` (spec-legal shared roots) but carry
+/// the distinct per-identity filenames from [`crate::render::assign_filenames`].
+/// The `filename` tiebreak never fires when ids are distinct, so ordering is
+/// unchanged for existing graphs.
 pub fn build_manifest(rendered: &[RenderedFile], graph: &WorkspaceGraph) -> Manifest {
     let mut generated_files: Vec<String> =
         rendered.iter().map(|f| f.rel_path.clone()).collect();
@@ -46,10 +50,16 @@ pub fn build_manifest(rendered: &[RenderedFile], graph: &WorkspaceGraph) -> Mani
         .iter()
         .map(|m| ModuleRecord {
             module_id: m.id.0.clone(),
-            filename: module_files.get(m.id.0.as_str()).cloned().unwrap_or_default(),
+            filename: module_files
+                .get(&(m.target_id.0.clone(), m.id.0.clone()))
+                .cloned()
+                .unwrap_or_default(),
         })
         .collect();
-    module_records.sort_by(|a, b| a.module_id.cmp(&b.module_id));
+    module_records.sort_by(|a, b| {
+        (a.module_id.as_str(), a.filename.as_str())
+            .cmp(&(b.module_id.as_str(), b.filename.as_str()))
+    });
     Manifest {
         protocol_version: PROTOCOL_VERSION,
         spec_version: SPEC_VERSION.to_string(),

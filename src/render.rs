@@ -55,19 +55,32 @@ pub fn external_note_filename(external_id: &ExternalCrateId, taken: &mut HashSet
 }
 
 /// Assign deterministic filenames to every module and external crate in the
-/// graph: modules in `ModuleId` order, then distinct externals in ID order,
-/// all through one shared `taken` set. Returns
-/// `(module_id -> filename, external_id -> filename)`.
+/// graph: modules in (`ModuleId`, `TargetId`) order, then distinct externals
+/// in ID order, all through one shared `taken` set. Returns
+/// (`(target_id, module_id)` -> filename, external_id -> filename).
+///
+/// The module map is keyed by module *identity* (`target_id`, `module_id`),
+/// not by the id string: two modules may share one `ModuleId` string (e.g.
+/// the lib root and a same-named bin root) while `ModuleId` strings stay
+/// kind-token-free per spec §9.3, so keying by the id string would collapse
+/// them to one entry (second filename overwrites the first, both notes share
+/// one path, last-write-wins in commit). Every distinct identity claims its
+/// own stem from `taken`, so filenames are injective. When all `ModuleId`
+/// strings are distinct the extra `TargetId` tiebreak never fires and the
+/// assignment is byte-identical to id-only ordering.
 pub fn assign_filenames(
     graph: &WorkspaceGraph,
-) -> (HashMap<String, String>, HashMap<String, String>) {
+) -> (HashMap<(String, String), String>, HashMap<String, String>) {
     let mut taken: HashSet<String> = HashSet::new();
     taken.insert("index".to_string());
-    let mut module_ids: Vec<&ModuleId> = graph.modules.iter().map(|m| &m.id).collect();
-    module_ids.sort();
+    let mut modules: Vec<&crate::domain::Module> = graph.modules.iter().collect();
+    modules.sort_by(|a, b| (&a.id, &a.target_id).cmp(&(&b.id, &b.target_id)));
     let mut module_files = HashMap::new();
-    for id in module_ids {
-        module_files.insert(id.0.clone(), module_note_filename(id, &mut taken));
+    for m in modules {
+        module_files.insert(
+            (m.target_id.0.clone(), m.id.0.clone()),
+            module_note_filename(&m.id, &mut taken),
+        );
     }
     let mut external_ids: Vec<&ExternalCrateId> = Vec::new();
     for dep in &graph.dependencies {
@@ -241,6 +254,24 @@ pub fn render_all(
     sort_graph(&mut sorted);
     let (module_files, external_files) = assign_filenames(&sorted);
 
+    // Wikilinks carry only the `ModuleId` string, so a shared id is
+    // inherently ambiguous: resolve it to the first module in the same
+    // (`ModuleId`, `TargetId`) assign order above (the `TargetId` tiebreak
+    // keeps this deterministic for any input order). Link shape is unchanged.
+    let mut link_files: HashMap<String, String> = HashMap::new();
+    {
+        let mut ordered: Vec<&crate::domain::Module> = sorted.modules.iter().collect();
+        ordered.sort_by(|a, b| (&a.id, &a.target_id).cmp(&(&b.id, &b.target_id)));
+        for m in ordered {
+            link_files.entry(m.id.0.clone()).or_insert_with(|| {
+                module_files
+                    .get(&(m.target_id.0.clone(), m.id.0.clone()))
+                    .cloned()
+                    .unwrap_or_default()
+            });
+        }
+    }
+
     let package_of: HashMap<&str, &str> = sorted
         .targets
         .iter()
@@ -250,7 +281,7 @@ pub fn render_all(
     let link_for = |to: &DependencyTarget| -> String {
         match to {
             DependencyTarget::Internal(m) => {
-                let file = module_files.get(m.0.as_str()).cloned().unwrap_or_default();
+                let file = link_files.get(m.0.as_str()).cloned().unwrap_or_default();
                 format!("[[{}|{}]]", stem_of(&file), m.0)
             }
             DependencyTarget::External(e) => {
@@ -278,12 +309,15 @@ pub fn render_all(
                 DependencyTarget::External(_) => false,
             })
             .map(|d| {
-                let file = module_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
+                let file = link_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
                 format!("[[{}|{}]]", stem_of(&file), d.from.0)
             })
             .collect();
         let package_id = package_of.get(m.target_id.0.as_str()).copied().unwrap_or("");
-        let filename = module_files.get(m.id.0.as_str()).cloned().unwrap_or_default();
+        let filename = module_files
+            .get(&(m.target_id.0.clone(), m.id.0.clone()))
+            .cloned()
+            .unwrap_or_default();
         out.push(module_note(
             m,
             package_id,
@@ -306,7 +340,7 @@ pub fn render_all(
                     DependencyTarget::Internal(_) => false,
                 })
                 .map(|d| {
-                    let file = module_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
+                    let file = link_files.get(d.from.0.as_str()).cloned().unwrap_or_default();
                     format!("[[{}|{}]]", stem_of(&file), d.from.0)
                 })
                 .collect();
