@@ -29,8 +29,8 @@
 //! passed through untouched here; Task 6 emits the single run-level `CFG001`.
 
 use crate::domain::{
-    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module,
-    Package, SourceSpan, Target, WorkspaceGraph,
+    Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
+    SourceSpan, Target, WorkspaceGraph,
 };
 use crate::graph::{dedup_dependencies, sort_graph};
 use crate::ids::{make_external_id, make_module_id, ModuleId};
@@ -76,6 +76,7 @@ pub fn discover_modules_for_target(
 ) -> (Vec<Module>, Vec<Diagnostic>) {
     let mut walker = Walker {
         target,
+        target_root: target.root_source.clone(),
         workspace_root: best_canonical(workspace_root),
         modules: Vec::new(),
         diagnostics: Vec::new(),
@@ -139,6 +140,7 @@ pub fn extract_uses(module: &Module, file: &syn::File) -> Vec<RawUse> {
 
 struct Walker<'a> {
     target: &'a Target,
+    target_root: PathBuf,
     workspace_root: PathBuf,
     modules: Vec<Module>,
     diagnostics: Vec<Diagnostic>,
@@ -169,6 +171,20 @@ fn lex_normalize(path: &Path) -> PathBuf {
 
 fn parent_of(path: &Path) -> PathBuf {
     path.parent().map(Path::to_path_buf).unwrap_or_default()
+}
+
+/// Directory in which plain (non-`#[path]`) children of `containing` are
+/// resolved, per rustc 2018 conventions: `mod.rs` files and the crate root
+/// (target `root_source`) resolve children in their own parent directory;
+/// any other file module `dir/foo.rs` resolves children in `dir/foo/`.
+fn anchor_dir(containing: &Path, target_root: &Path) -> PathBuf {
+    if containing == target_root || containing.file_name().is_some_and(|name| name == "mod.rs") {
+        return parent_of(containing);
+    }
+    match containing.file_stem() {
+        Some(stem) => parent_of(containing).join(stem),
+        None => parent_of(containing),
+    }
 }
 
 fn item_span(file: &Path, span: impl Spanned) -> SourceSpan {
@@ -278,7 +294,7 @@ impl Walker<'_> {
             return;
         }
 
-        let dir = parent_of(containing);
+        let dir = anchor_dir(containing, &self.target_root);
         let cand_file = dir.join(format!("{name}.rs"));
         let cand_mod = dir.join(&name).join("mod.rs");
         let file_exists = cand_file.is_file();
@@ -598,7 +614,10 @@ fn scope_diag(from: &ModuleId, path: &str, span: &Option<SourceSpan>) -> Diagnos
     Diagnostic {
         severity: DiagnosticSeverity::Warning,
         code: "SCOPE001".to_string(),
-        message: format!("scope collision: {} -> {path}; unresolved syntactic ownership", from.0),
+        message: format!(
+            "scope collision: {} -> {path}; unresolved syntactic ownership",
+            from.0
+        ),
         source_span: span.clone(),
     }
 }
@@ -626,10 +645,7 @@ fn resolve_use(
     }
     let unresolved = |suffix: Option<String>| {
         let message = match suffix {
-            Some(extra) => format!(
-                "scope collision: {} -> {}; {extra}",
-                raw.from.0, display
-            ),
+            Some(extra) => format!("scope collision: {} -> {}; {extra}", raw.from.0, display),
             None => format!(
                 "scope collision: {} -> {}; unresolved syntactic ownership",
                 raw.from.0, display
@@ -705,9 +721,7 @@ fn resolve_use(
                     match internal_match {
                         // Inconclusive tree position: both match, no edge.
                         Some(_) => unresolved(None),
-                        None => {
-                            Resolution::Edge(DependencyTarget::External(external))
-                        }
+                        None => Resolution::Edge(DependencyTarget::External(external)),
                     }
                 }
                 Some(versions) => {
@@ -886,7 +900,13 @@ impl Analyzer for SynAnalyzer {
                 },
             };
             raws.extend(extract_uses(module, &file));
-            collect_glob_diags(&file.items, &module.id, &[], &module.source_path, &mut diagnostics);
+            collect_glob_diags(
+                &file.items,
+                &module.id,
+                &[],
+                &module.source_path,
+                &mut diagnostics,
+            );
             if fresh && file_has_cfg(&file.items) {
                 cfg_seen = true;
             }
@@ -910,7 +930,11 @@ impl Analyzer for SynAnalyzer {
             let parent = if logical.len() == 1 {
                 ctx.prefix.clone()
             } else {
-                format!("{}::{}", ctx.prefix, logical[..logical.len() - 1].join("::"))
+                format!(
+                    "{}::{}",
+                    ctx.prefix,
+                    logical[..logical.len() - 1].join("::")
+                )
             };
             dependencies.push(Dependency {
                 from: ModuleId(parent),
@@ -960,8 +984,7 @@ impl Analyzer for SynAnalyzer {
 
         // 6. Packages are synthesized from the input targets (identity only;
         // the workspace manifest stands in for per-package manifest paths).
-        let mut package_ids: Vec<_> =
-            input.targets.iter().map(|t| t.package_id.clone()).collect();
+        let mut package_ids: Vec<_> = input.targets.iter().map(|t| t.package_id.clone()).collect();
         package_ids.sort();
         package_ids.dedup();
         let packages: Vec<Package> = package_ids

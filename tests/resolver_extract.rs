@@ -183,3 +183,41 @@ fn use_trees_aliases_and_pub_use_extracted() {
     let bar = uses.iter().find(|u| u.path == "crate::bar").unwrap();
     assert_eq!(bar.span.as_ref().unwrap().line_start, 3);
 }
+
+#[test]
+fn nested_file_modules_use_subdirectory_anchor() {
+    // `mod bar;` inside file-module `foo.rs` resolves to `foo/bar.rs`, not the
+    // sibling `bar.rs` decoy.
+    let dir = scenario_dir("nested-anchor");
+    let target = lib_target("fix", "anchored", dir.join("lib.rs"));
+    let (modules, diags) = discover_modules_for_target(&target, &dir);
+    assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+    assert_eq!(
+        ids_of(&modules),
+        vec![
+            "fix::anchored",
+            "fix::anchored::foo",
+            "fix::anchored::foo::bar"
+        ]
+    );
+    let bar = find(&modules, "fix::anchored::foo::bar");
+    let path = bar.source_path.as_ref().expect("file module needs a path");
+    assert!(
+        path.ends_with("foo/bar.rs"),
+        "must resolve from foo/bar.rs, got {path:?}"
+    );
+    assert_eq!(bar.qualified_name, "crate::foo::bar");
+
+    // Reverse negative: with only the sibling `dir/bar.rs` present (no
+    // `dir/foo/` subdir), `bar` is MOD001-unresolved.
+    let miss = scenario_dir("nested-anchor-miss");
+    let miss_target = lib_target("fix", "anchored_miss", miss.join("lib.rs"));
+    let (miss_modules, miss_diags) = discover_modules_for_target(&miss_target, &miss);
+    assert_eq!(
+        ids_of(&miss_modules),
+        vec!["fix::anchored_miss", "fix::anchored_miss::foo"]
+    );
+    let mod001: Vec<_> = miss_diags.iter().filter(|d| d.code == "MOD001").collect();
+    assert_eq!(mod001.len(), 1, "expected one MOD001: {miss_diags:?}");
+    assert_eq!(miss_diags.len(), 1, "no other diagnostics: {miss_diags:?}");
+}
