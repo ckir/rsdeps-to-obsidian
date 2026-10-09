@@ -1,0 +1,13 @@
+warning[EXT001]: unresolved external: acme::acme::acme::ext -> requests; no pinned version (at src/acme/ext.py:3)
+warning[EXT001]: unresolved external: acme::acme::acme::ext -> nosuchpkg.thing; no pinned version (at src/acme/ext.py:4)
+warning[EXT001]: unresolved external: acme::acme::acme::ext -> nosuchmulti.item1; no pinned version (at src/acme/ext.py:6)
+warning[EXT001]: unresolved external: acme::acme::acme::ext -> nosuchmulti.item2; no pinned version (at src/acme/ext.py:7)
+warning[EXT001]: unresolved external: acme::acme::acme::sib -> ghostsecond; no pinned version (at src/acme/sib.py:1)
+warning[EXT001]: unresolved external: acme::acme::acme::star -> nosuchstar; no pinned version (at src/acme/star.py:2)
+warning[EXT001]: unresolved external: acme::acme::acme::tc -> ghostpkg; no pinned version (at src/acme/tc.py:4)
+warning[MOD003]: ambiguous python layout: both @@WORKSPACE@@/src/acme/amb.py and @@WORKSPACE@@/src/acme/amb/__init__.py exist; using package
+warning[SCOPE001]: scope collision: acme::__main__ -> acme.models; unresolved syntactic ownership (at src/acme/__main__.py:1)
+warning[SCOPE001]: scope collision: acme::acme::acme::views -> acme.api.handler; unresolved syntactic ownership (at src/acme/views.py:1)
+warning[SCOPE001]: scope collision: acme::tool -> acme.models; unresolved syntactic ownership (at tool.py:1)
+warning[SCOPE001]: scope collision: acme::tool -> acme.ghost; unresolved syntactic ownership (at tool.py:3)
+warning[SCOPE001]: scope collision: acme::tool -> .nosuchsib; unresolved syntactic ownership (at tool.py:4)

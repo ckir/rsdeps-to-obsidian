@@ -1,0 +1,10 @@
+# Only `==` pins yield versions; everything else below is noise.
+flask==3.0.0
+
+# Noise: includes are not followed, editables/options/markers/ranges/bare
+# names contribute nothing.
+-r requirements-dev.txt
+-e .
+click>=8.0
+requests
+celery; python_version > "3.8"

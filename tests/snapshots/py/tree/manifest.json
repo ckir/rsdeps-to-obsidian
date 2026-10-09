@@ -1,0 +1,113 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "generated_files": [
+    "acme________main______.md",
+    "acme__acme.md",
+    "acme__acme__acme.md",
+    "acme__acme__acme________main______.md",
+    "acme__acme__acme__amb.md",
+    "acme__acme__acme__api.md",
+    "acme__acme__acme__ext.md",
+    "acme__acme__acme__models.md",
+    "acme__acme__acme__ns.md",
+    "acme__acme__acme__ns__nmod.md",
+    "acme__acme__acme__pkg.md",
+    "acme__acme__acme__pkg__m.md",
+    "acme__acme__acme__rel.md",
+    "acme__acme__acme__sib.md",
+    "acme__acme__acme__star.md",
+    "acme__acme__acme__sub.md",
+    "acme__acme__acme__sub__deep.md",
+    "acme__acme__acme__tc.md",
+    "acme__acme__acme__views.md",
+    "acme__tool.md",
+    "graph.json",
+    "index.md",
+    "rust-external-flask__3.0.0.md"
+  ],
+  "module_records": [
+    {
+      "module_id": "acme::__main__",
+      "filename": "acme________main______.md"
+    },
+    {
+      "module_id": "acme::acme",
+      "filename": "acme__acme.md"
+    },
+    {
+      "module_id": "acme::acme::acme",
+      "filename": "acme__acme__acme.md"
+    },
+    {
+      "module_id": "acme::acme::acme::__main__",
+      "filename": "acme__acme__acme________main______.md"
+    },
+    {
+      "module_id": "acme::acme::acme::amb",
+      "filename": "acme__acme__acme__amb.md"
+    },
+    {
+      "module_id": "acme::acme::acme::api",
+      "filename": "acme__acme__acme__api.md"
+    },
+    {
+      "module_id": "acme::acme::acme::ext",
+      "filename": "acme__acme__acme__ext.md"
+    },
+    {
+      "module_id": "acme::acme::acme::models",
+      "filename": "acme__acme__acme__models.md"
+    },
+    {
+      "module_id": "acme::acme::acme::ns",
+      "filename": "acme__acme__acme__ns.md"
+    },
+    {
+      "module_id": "acme::acme::acme::ns::nmod",
+      "filename": "acme__acme__acme__ns__nmod.md"
+    },
+    {
+      "module_id": "acme::acme::acme::pkg",
+      "filename": "acme__acme__acme__pkg.md"
+    },
+    {
+      "module_id": "acme::acme::acme::pkg::m",
+      "filename": "acme__acme__acme__pkg__m.md"
+    },
+    {
+      "module_id": "acme::acme::acme::rel",
+      "filename": "acme__acme__acme__rel.md"
+    },
+    {
+      "module_id": "acme::acme::acme::sib",
+      "filename": "acme__acme__acme__sib.md"
+    },
+    {
+      "module_id": "acme::acme::acme::star",
+      "filename": "acme__acme__acme__star.md"
+    },
+    {
+      "module_id": "acme::acme::acme::sub",
+      "filename": "acme__acme__acme__sub.md"
+    },
+    {
+      "module_id": "acme::acme::acme::sub::deep",
+      "filename": "acme__acme__acme__sub__deep.md"
+    },
+    {
+      "module_id": "acme::acme::acme::tc",
+      "filename": "acme__acme__acme__tc.md"
+    },
+    {
+      "module_id": "acme::acme::acme::views",
+      "filename": "acme__acme__acme__views.md"
+    },
+    {
+      "module_id": "acme::tool",
+      "filename": "acme__tool.md"
+    }
+  ]
+}

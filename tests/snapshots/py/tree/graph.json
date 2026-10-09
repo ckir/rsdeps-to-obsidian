@@ -1,0 +1,490 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "packages": [
+    {
+      "id": "acme",
+      "name": "acme",
+      "manifest_path": "@@WORKSPACE@@/pyproject.toml"
+    }
+  ],
+  "targets": [
+    {
+      "id": "acme::bin::__main__",
+      "package_id": "acme",
+      "name": "__main__",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/src/acme/__main__.py"
+    },
+    {
+      "id": "acme::bin::tool",
+      "package_id": "acme",
+      "name": "tool",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/tool.py"
+    },
+    {
+      "id": "acme::lib::acme",
+      "package_id": "acme",
+      "name": "acme",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/src"
+    }
+  ],
+  "modules": [
+    {
+      "id": "acme::__main__",
+      "target_id": "acme::bin::__main__",
+      "name": "__main__",
+      "qualified_name": "__main__",
+      "source_path": "@@WORKSPACE@@/src/acme/__main__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme",
+      "target_id": "acme::lib::acme",
+      "name": "acme",
+      "qualified_name": "acme",
+      "source_path": "@@WORKSPACE@@/src",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme",
+      "target_id": "acme::lib::acme",
+      "name": "acme",
+      "qualified_name": "acme",
+      "source_path": "@@WORKSPACE@@/src/acme/__init__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::__main__",
+      "target_id": "acme::lib::acme",
+      "name": "__main__",
+      "qualified_name": "acme.__main__",
+      "source_path": "@@WORKSPACE@@/src/acme/__main__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::amb",
+      "target_id": "acme::lib::acme",
+      "name": "amb",
+      "qualified_name": "acme.amb",
+      "source_path": "@@WORKSPACE@@/src/acme/amb/__init__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::api",
+      "target_id": "acme::lib::acme",
+      "name": "api",
+      "qualified_name": "acme.api",
+      "source_path": "@@WORKSPACE@@/src/acme/api.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::ext",
+      "target_id": "acme::lib::acme",
+      "name": "ext",
+      "qualified_name": "acme.ext",
+      "source_path": "@@WORKSPACE@@/src/acme/ext.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::models",
+      "target_id": "acme::lib::acme",
+      "name": "models",
+      "qualified_name": "acme.models",
+      "source_path": "@@WORKSPACE@@/src/acme/models.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::ns",
+      "target_id": "acme::lib::acme",
+      "name": "ns",
+      "qualified_name": "acme.ns",
+      "source_path": null,
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::ns::nmod",
+      "target_id": "acme::lib::acme",
+      "name": "nmod",
+      "qualified_name": "acme.ns.nmod",
+      "source_path": "@@WORKSPACE@@/src/acme/ns/nmod.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::pkg",
+      "target_id": "acme::lib::acme",
+      "name": "pkg",
+      "qualified_name": "acme.pkg",
+      "source_path": "@@WORKSPACE@@/src/acme/pkg/__init__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::pkg::m",
+      "target_id": "acme::lib::acme",
+      "name": "m",
+      "qualified_name": "acme.pkg.m",
+      "source_path": "@@WORKSPACE@@/src/acme/pkg/m.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::rel",
+      "target_id": "acme::lib::acme",
+      "name": "rel",
+      "qualified_name": "acme.rel",
+      "source_path": "@@WORKSPACE@@/src/acme/rel.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::sib",
+      "target_id": "acme::lib::acme",
+      "name": "sib",
+      "qualified_name": "acme.sib",
+      "source_path": "@@WORKSPACE@@/src/acme/sib.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::star",
+      "target_id": "acme::lib::acme",
+      "name": "star",
+      "qualified_name": "acme.star",
+      "source_path": "@@WORKSPACE@@/src/acme/star.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::sub",
+      "target_id": "acme::lib::acme",
+      "name": "sub",
+      "qualified_name": "acme.sub",
+      "source_path": "@@WORKSPACE@@/src/acme/sub/__init__.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::sub::deep",
+      "target_id": "acme::lib::acme",
+      "name": "deep",
+      "qualified_name": "acme.sub.deep",
+      "source_path": "@@WORKSPACE@@/src/acme/sub/deep.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::tc",
+      "target_id": "acme::lib::acme",
+      "name": "tc",
+      "qualified_name": "acme.tc",
+      "source_path": "@@WORKSPACE@@/src/acme/tc.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::acme::acme::views",
+      "target_id": "acme::lib::acme",
+      "name": "views",
+      "qualified_name": "acme.views",
+      "source_path": "@@WORKSPACE@@/src/acme/views.py",
+      "source_span": null
+    },
+    {
+      "id": "acme::tool",
+      "target_id": "acme::bin::tool",
+      "name": "tool",
+      "qualified_name": "tool",
+      "source_path": "@@WORKSPACE@@/tool.py",
+      "source_span": null
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "acme::acme",
+      "to": "acme::acme::acme",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::__main__",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::amb",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::api",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::ext",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::models",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::ns",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::pkg",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::rel",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::sib",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::star",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::sub",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::tc",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme",
+      "to": "acme::acme::acme::views",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme::__main__",
+      "to": "acme::acme::acme::models",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::api",
+      "to": "acme::acme::acme::sib",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::ext",
+      "to": "flask@3.0.0",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::models",
+      "to": "acme::acme::acme::sib",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::ns",
+      "to": "acme::acme::acme::ns::nmod",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme::pkg",
+      "to": "acme::acme::acme::pkg::m",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme::rel",
+      "to": "acme::acme::acme::pkg",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::rel",
+      "to": "acme::acme::acme::pkg::m",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::rel",
+      "to": "acme::acme::acme::sib",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::star",
+      "to": "acme::acme::acme::pkg",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::acme::acme::sub",
+      "to": "acme::acme::acme::sub::deep",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "acme::acme::acme::sub::deep",
+      "to": "acme::acme::acme::pkg::m",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "acme::tool",
+      "to": "acme::acme",
+      "target_type": "internal",
+      "kind": "use"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::ext -> requests; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/ext.py",
+        "line_start": 3,
+        "line_end": 3
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::ext -> nosuchpkg.thing; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/ext.py",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::ext -> nosuchmulti.item1; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/ext.py",
+        "line_start": 6,
+        "line_end": 6
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::ext -> nosuchmulti.item2; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/ext.py",
+        "line_start": 7,
+        "line_end": 7
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::sib -> ghostsecond; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/sib.py",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::star -> nosuchstar; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/star.py",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: acme::acme::acme::tc -> ghostpkg; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/tc.py",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "MOD003",
+      "message": "ambiguous python layout: both @@WORKSPACE@@/src/acme/amb.py and @@WORKSPACE@@/src/acme/amb/__init__.py exist; using package",
+      "source_span": null
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: acme::__main__ -> acme.models; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/__main__.py",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: acme::acme::acme::views -> acme.api.handler; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/acme/views.py",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: acme::tool -> acme.models; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/tool.py",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: acme::tool -> acme.ghost; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/tool.py",
+        "line_start": 3,
+        "line_end": 3
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: acme::tool -> .nosuchsib; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/tool.py",
+        "line_start": 4,
+        "line_end": 4
+      }
+    }
+  ]
+}
