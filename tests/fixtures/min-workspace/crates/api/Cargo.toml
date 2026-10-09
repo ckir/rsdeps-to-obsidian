@@ -1,0 +1,16 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+domain = { path = "../domain" }
+
+# Test- and bench-only targets: discovery must skip these (lib+bin only).
+[[test]]
+name = "smoke"
+path = "test-only/smoke.rs"
+
+[[bench]]
+name = "perf"
+path = "bench-only/perf.rs"
