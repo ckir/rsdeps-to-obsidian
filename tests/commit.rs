@@ -45,15 +45,16 @@ fn manifest_for(files: &[&str]) -> Manifest {
     }
 }
 
-/// Recursive snapshot of a directory tree: rel-path -> bytes. Missing dir => empty.
+/// Recursive snapshot of a directory tree: rel-path -> bytes. Panics with path
+/// context on I/O errors (test reader: fail loudly, never swallow).
 fn snapshot(root: &Path) -> BTreeMap<String, Vec<u8>> {
     let mut out = BTreeMap::new();
     fn walk(dir: &Path, root: &Path, out: &mut BTreeMap<String, Vec<u8>>) {
-        let entries = match fs::read_dir(dir) {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-        for entry in entries.flatten() {
+        let entries = fs::read_dir(dir)
+            .unwrap_or_else(|e| panic!("read test tree dir {}: {e}", dir.display()));
+        for entry in entries {
+            let entry = entry
+                .unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
             let path = entry.path();
             let rel = path
                 .strip_prefix(root)
@@ -63,7 +64,11 @@ fn snapshot(root: &Path) -> BTreeMap<String, Vec<u8>> {
             if path.is_dir() {
                 walk(&path, root, out);
             } else {
-                out.insert(rel, fs::read(&path).unwrap_or_default());
+                out.insert(
+                    rel,
+                    fs::read(&path)
+                        .unwrap_or_else(|e| panic!("read snapshot file {}: {e}", path.display())),
+                );
             }
         }
     }

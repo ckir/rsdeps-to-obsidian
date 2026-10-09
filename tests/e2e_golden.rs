@@ -27,6 +27,12 @@ use std::process::Command;
 
 const WORKSPACE_TOKEN: &str = "@@WORKSPACE@@";
 
+// Serializes snapshot update-mode (read-remove-write on the shared
+// snapshot dir) so concurrent `RSDEPS_UPDATE_SNAPSHOTS=1` execution cannot
+// interleave. Read (compare) mode never takes this lock, keeping parallel
+// reads fast.
+static SNAPSHOT_UPDATE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/full-workspace")
 }
@@ -88,11 +94,11 @@ fn normalize(mut bytes: Vec<u8>, roots: &[String]) -> Vec<u8> {
 fn snapshot_tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
     let mut out = BTreeMap::new();
     fn walk(dir: &Path, root: &Path, out: &mut BTreeMap<String, Vec<u8>>) {
-        let entries = match fs::read_dir(dir) {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-        for entry in entries.flatten() {
+        let entries = fs::read_dir(dir)
+            .unwrap_or_else(|e| panic!("read test tree dir {}: {e}", dir.display()));
+        for entry in entries {
+            let entry = entry
+                .unwrap_or_else(|e| panic!("read test tree entry in {}: {e}", dir.display()));
             let path = entry.path();
             let rel = path
                 .strip_prefix(root)
@@ -102,7 +108,11 @@ fn snapshot_tree(root: &Path) -> BTreeMap<String, Vec<u8>> {
             if path.is_dir() {
                 walk(&path, root, out);
             } else {
-                out.insert(rel, fs::read(&path).unwrap_or_default());
+                out.insert(
+                    rel,
+                    fs::read(&path)
+                        .unwrap_or_else(|e| panic!("read snapshot file {}: {e}", path.display())),
+                );
             }
         }
     }
@@ -131,6 +141,9 @@ fn update_snapshots(
     stdout: Option<&[u8]>,
     stderr: Option<&[u8]>,
 ) {
+    let _guard = SNAPSHOT_UPDATE_LOCK
+        .lock()
+        .expect("snapshot update lock");
     let dir = snapshots_dir();
     let tree_dir = dir.join("tree");
     let _ = fs::remove_dir_all(&tree_dir);

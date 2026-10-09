@@ -208,7 +208,9 @@ pub fn commit(
 
     // 3. Stage every Markdown temp first (write + flush + fsync, all before
     // any rename), so a crash mid-publish leaves the old manifest
-    // authoritative and staged content as orphan candidates.
+    // authoritative; staged temps carry no `.md` extension so they are
+    // unreported litter, not orphan candidates (only published `.md`
+    // files are candidates).
     let mut staged = Vec::with_capacity(dests.len());
     for (file, (rel, dest)) in rendered.iter().zip(dests.iter()) {
         let parent = dest.parent().unwrap_or(output_root);
