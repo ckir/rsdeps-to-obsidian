@@ -8,6 +8,15 @@
 //! * [`workspace_rel`] renders a path workspace-root-relative with `/`
 //!   separators and no `.`/`..` segments (lexical normalization only; the
 //!   filesystem is never touched).
+//!
+//! Spec-code → surface map (spec vocabulary codes `ORPHAN001`/`CLEAN001`/
+//! `PATH002` are never emitted as `Diagnostic.code`): only `CFG001`,
+//! `SCOPE001`, `MOD001`, `MOD002`, `PATH001`, `IO001` appear as
+//! `Diagnostic.code` (JSON graph diagnostics and `severity[CODE]:` stderr
+//! lines). Orphans surface as `orphan generated file: <name>` stderr strings
+//! (see [`crate::commit::detect_orphans`]); clean/path failures surface as
+//! fatal `Err` strings (binary exit 1), except missing-manifest `--clean`,
+//! which reports `Ok` with zero deletes.
 
 use crate::domain::{Diagnostic, DiagnosticSeverity, SourceSpan};
 use std::cmp::Ordering;

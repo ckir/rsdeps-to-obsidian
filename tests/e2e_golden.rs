@@ -178,8 +178,10 @@ fn full_run_produces_golden_bytes() {
     assert_eq!(summary.targets, 4, "targets: {summary:?}");
     assert_eq!(summary.modules, 17, "modules: {summary:?}");
     // 24 deduped dependencies: 13 Module containment keys + 18 Use/ReExport
-    // keys minus the 6 (from,to) overlaps dedup collapses to the higher
-    // precedence (api->models goes ReExport, the rest Use). 1 distinct
+    // keys minus the 7 (from,to) overlaps dedup collapses to the higher
+    // precedence (api->models goes ReExport, the rest Use): api->models,
+    // api->qux (pub mod qux + #[cfg(unix)] use crate::qux), api->routes,
+    // alpha->shared, beta->shared, services->deep, core->models. 1 distinct
     // external (serde@1.0.229, referenced from the lib root and beta).
     assert_eq!(summary.dependencies, 24, "dependencies: {summary:?}");
     assert_eq!(summary.external, 1, "external: {summary:?}");

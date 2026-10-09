@@ -8,11 +8,14 @@
 //! delete obsolete prev-only entries inside the root.
 //!
 //! Crash semantics: before the manifest rename the previous manifest (if any)
-//! stays authoritative and any published-but-uncommitted files are orphan
-//! candidates; after the rename the new manifest is authoritative and
-//! not-yet-cleaned stale files are orphans. Nothing is ever auto-deleted:
-//! leftovers are reported through [`detect_orphans`] as
+//! stays authoritative and any published-but-uncommitted `.md` files are
+//! orphan candidates; after the rename the new manifest is authoritative and
+//! not-yet-cleaned stale `.md` files are orphans. Nothing is ever
+//! auto-deleted: `.md` leftovers are reported through [`detect_orphans`] as
 //! `orphan generated file: <name>` lines for the caller to print on stderr.
+//! Staged `NamedTempFile` temps carry no `.md` extension, so
+//! [`detect_orphans`] never scans them: a crash mid-commit leaves them as
+//! unreported litter, not orphan candidates.
 //!
 //! Commit-record file: [`MANIFEST_FILENAME`] (`manifest.json`) at the output
 //! root. It is written by [`commit`] after all Markdown renames and is never
