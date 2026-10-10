@@ -163,6 +163,29 @@ fn versions_and_refs() {
 }
 
 #[test]
+fn exe_family_output_types_yield_bins() {
+    // `WinExe` (WinForms/WPF/WinUI) and `AppContainerExe` (UWP, spelled
+    // lowercase here to prove the ASCII case-insensitive match) are
+    // executables like `Exe`: Bin targets only, zero Lib.
+    let root = fixture("cs-exe-workspace");
+    let ws = discover_cs(&cs_config(root.clone())).expect("discovery succeeds");
+
+    assert_eq!(ws.root, root, "root: {ws:?}");
+    let names: Vec<&str> = ws.packages.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["Gui", "Uwp"], "packages: {ws:?}");
+    let ids: Vec<&str> = ws.targets.iter().map(|t| t.id.0.as_str()).collect();
+    assert_eq!(
+        ids,
+        ["Gui::bin::Gui", "Uwp::bin::Uwp"],
+        "Bin targets only: {ws:?}"
+    );
+    assert!(
+        ws.targets.iter().all(|t| matches!(t.kind, TargetKind::Bin)),
+        "no Lib for executables: {ws:?}"
+    );
+}
+
+#[test]
 fn malformed_csproj_fails_closed() {
     // Garbage XML in a discovered csproj is a hard error naming the file.
     let root = fixture("cs-bad-workspace");

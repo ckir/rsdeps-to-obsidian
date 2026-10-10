@@ -29,11 +29,11 @@
 //!   verbatim, sorted). `root_source` is the project dir. The TFM list is
 //!   encoded in the target NAME only: the resolver re-reads the csproj per
 //!   target (TypeScript tsconfig re-read precedent), so no struct changes.
-//! - Bin targets: `OutputType=Exe` (case-insensitive, and literally `Exe`)
-//!   yields `{pkg}::bin::{name}` with `root_source` set to the project dir;
-//!   Exe projects get Bin targets ONLY (all their modules belong to the Bin
-//!   tree; Rust `main.rs` precedent) while libraries get Lib targets ONLY.
-//!   A multi-TFM Exe splits per TFM like Lib. Bin targets are emitted for
+//! - Bin targets: an executable `OutputType` (`Exe`, `WinExe`, or
+//!   `AppContainerExe`, ASCII case-insensitive) yields `{pkg}::bin::{name}`
+//!   with `root_source` set to the project dir;
+//!   Executable projects get Bin targets ONLY (all their modules belong to the Bin
+//!   tree; Rust `main.rs` precedent) while libraries get Lib targets ONLY.//!   A multi-TFM Exe splits per TFM like Lib. Bin targets are emitted for
 //!   every Exe project even when no `.cs` sources exist (missing-file
 //!   targets are the resolver's fail-closed business, mirroring the Python
 //!   miss-arm and TS bin-miss rules).
@@ -180,6 +180,11 @@ fn level_root(nearest: &[&PathBuf], start: &Path) -> PathBuf {
         start.to_path_buf()
     }
 }
+
+/// Executable `OutputType` values (`OutputType` is a closed MSBuild set):
+/// console (`Exe`), Windows GUI (`WinExe`: WinForms/WPF/WinUI), and UWP
+/// (`AppContainerExe`). Anything else (including absent) is a library.
+const EXE_OUTPUT_TYPES: [&str; 3] = ["exe", "winexe", "appcontainerexe"];
 
 /// Lowercased element/attribute name (MSBuild XML is case-insensitive).
 fn lower(bytes: &[u8]) -> String {
@@ -632,11 +637,12 @@ pub fn discover_cs(config: &Config) -> Result<DiscoveredWorkspace, String> {
             .unwrap_or_default();
         tfms.sort();
         tfms.dedup();
-        let is_exe = info
-            .output_type
-            .as_deref()
-            .is_some_and(|o| o.eq_ignore_ascii_case("exe"));
-        // Exe projects yield Bin targets ONLY; libraries yield Lib ONLY.
+        let is_exe = info.output_type.as_deref().is_some_and(|o| {
+            EXE_OUTPUT_TYPES
+                .iter()
+                .any(|exe| o.eq_ignore_ascii_case(exe))
+        });
+        // Executable projects yield Bin targets ONLY; libraries yield Lib ONLY.
         let kind = if is_exe {
             TargetKind::Bin
         } else {

@@ -296,3 +296,37 @@ fn lang_flag_single_value_and_rejects_repeats() {
         "repeated --lang must error"
     );
 }
+
+#[test]
+fn autodetect_csharp_project_files() {
+    // C#-only dir: a top-level .sln detects Csharp.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    touch(dir.path(), "App.sln");
+    assert_eq!(detect_language(dir.path()), Lang::Csharp);
+
+    // A top-level .csproj alone detects Csharp too.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    touch(dir.path(), "Web.csproj");
+    assert_eq!(detect_language(dir.path()), Lang::Csharp);
+}
+
+#[test]
+fn autodetect_csharp_priority() {
+    // Cargo.toml beats .csproj.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    touch(dir.path(), "Cargo.toml");
+    touch(dir.path(), "Web.csproj");
+    assert_eq!(detect_language(dir.path()), Lang::Rust);
+
+    // .csproj beats pyproject.toml.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    touch(dir.path(), "Web.csproj");
+    touch(dir.path(), "pyproject.toml");
+    assert_eq!(detect_language(dir.path()), Lang::Csharp);
+
+    // .sln beats package.json.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    touch(dir.path(), "App.sln");
+    touch(dir.path(), "package.json");
+    assert_eq!(detect_language(dir.path()), Lang::Csharp);
+}

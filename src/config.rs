@@ -126,6 +126,8 @@ pub fn resolve_config(args: &CliArgs, cwd: &Path) -> Result<Config, String> {
 
 /// Project files that drive language autodetect, in priority order:
 /// `Cargo.toml` > `pyproject.toml`/`setup.py` > `package.json`.
+/// C# (`*.sln`/`*.csproj`) is glob-scanned separately (see
+/// [`detect_language`]) and slots between `Cargo.toml` and `pyproject.toml`.
 const PROJECT_FILES: [&str; 4] = ["Cargo.toml", "pyproject.toml", "setup.py", "package.json"];
 
 /// Project files present directly under `dir`, in [`PROJECT_FILES`] priority
@@ -139,10 +141,33 @@ pub(crate) fn project_files_present(dir: &Path) -> Vec<&'static str> {
         .collect()
 }
 
-/// Autodetect the language backend for `dir`: first present project file in
-/// priority order wins (`pyproject.toml` and `setup.py` both mean Python);
-/// a directory with no project file defaults to Rust.
+/// Whether `dir` holds any top-level C# project file (`*.sln`/`*.csproj`,
+/// case-insensitive). Top level only, mirroring [`project_files_present`]:
+/// an unreadable dir simply yields false; detection never fails.
+fn has_csharp_files(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries.filter_map(|e| e.ok()).any(|e| {
+        e.path().is_file()
+            && e.path()
+                .extension()
+                .and_then(|x| x.to_str())
+                .is_some_and(|x| x.eq_ignore_ascii_case("sln") || x.eq_ignore_ascii_case("csproj"))
+    })
+}
+
+/// Autodetect the language backend for `dir`: `Cargo.toml` wins outright,
+/// then any top-level `*.sln`/`*.csproj` selects C#, then `pyproject.toml`
+/// and `setup.py` select Python and `package.json` selects TypeScript; a
+/// directory with no project file defaults to Rust.
 pub fn detect_language(dir: &Path) -> Lang {
+    if dir.join("Cargo.toml").is_file() {
+        return Lang::Rust;
+    }
+    if has_csharp_files(dir) {
+        return Lang::Csharp;
+    }
     match project_files_present(dir).as_slice() {
         [] => Lang::Rust,
         [first, ..] => match *first {
