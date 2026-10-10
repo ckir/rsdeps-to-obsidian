@@ -1,0 +1,10 @@
+{
+  // shared base mappings (comments + trailing commas tolerated everywhere)
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@base/*": ["base/*"],
+      "@over/*": ["base-over/*"],
+    },
+  },
+}

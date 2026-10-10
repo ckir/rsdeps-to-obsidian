@@ -1,0 +1,4 @@
+{
+  // inherits every mapping from the base config (trailing comma tolerated)
+  "extends": "./tsconfig.base.json",
+}

@@ -1,0 +1,10 @@
+{
+  // overrides one inherited mapping wholesale (patterns resolve against
+  // the inherited baseUrl, i.e. this file's parent dir)
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@over/*": ["over/*"],
+    },
+  },
+}

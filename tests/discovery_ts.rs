@@ -38,9 +38,9 @@ fn ts_config(workspace: PathBuf) -> Config {
 #[test]
 fn roots_names_and_tsconfigs() {
     // `package.json` names `@org/web` (kept verbatim, `/` intact);
-    // `tsconfig.json` (rootDir src) + `tsconfig.node.json` each become a Lib
-    // target: the root one takes the package short name, the dotted one its
-    // stem.
+    // `tsconfig.json` (rootDir src) + `tsconfig.node.json` (extends the root
+    // config, inheriting rootDir) each become a Lib target: the root one
+    // takes the package short name, the dotted one its stem.
     let root = fixture("ts-roots-workspace");
     let ws = discover_ts(&ts_config(root.clone())).expect("discovery succeeds");
 
@@ -71,7 +71,44 @@ fn roots_names_and_tsconfigs() {
         .iter()
         .find(|t| t.id.0 == "@org/web::lib::node")
         .expect("stem tsconfig Lib: {ws:?}");
-    assert_eq!(node.root_source, root, "no rootDir falls back: {ws:?}");
+    assert_eq!(
+        node.root_source,
+        root.join("src"),
+        "extends rootDir inherited: {ws:?}"
+    );
+}
+
+#[test]
+fn extends_rootdir_inherited() {
+    // `rootDir` inherited from a JSONC base config (comments + trailing
+    // comma) resolves against the base file's directory.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    std::fs::write(
+        tmp.path().join("package.json"),
+        "{\"name\": \"kid\", \"version\": \"1.0.0\"}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("tsconfig.base.json"),
+        "{\n  // base layout\n  \"compilerOptions\": {\n    \"rootDir\": \"./src\",\n  },\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("tsconfig.json"),
+        "{\"extends\": \"./tsconfig.base.json\"}\n",
+    )
+    .unwrap();
+    let ws = discover_ts(&ts_config(tmp.path().to_path_buf())).expect("discovery succeeds");
+    let kid = ws
+        .targets
+        .iter()
+        .find(|t| t.id.0 == "kid::lib::kid")
+        .expect("root Lib: {ws:?}");
+    assert_eq!(
+        kid.root_source,
+        tmp.path().join("src"),
+        "rootDir honored: {ws:?}"
+    );
 }
 
 #[test]

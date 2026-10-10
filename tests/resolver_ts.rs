@@ -136,16 +136,37 @@ fn probe_order_and_mod004() {
     };
     let graph = analyze(&input);
 
-    // `user.ts`, `user.tsx`, and `user/index.ts` are three DISTINCT modules
-    // (no MOD003 analog) sharing one id; the probe order hits `user.ts`.
+    // `user.ts` wins the shadow group at walk time: `user.tsx` and
+    // `user/index.ts` are skipped entirely (at most one module per id), so
+    // exactly one `user` module exists and it is the `user.ts` file.
     assert_eq!(
         graph
             .modules
             .iter()
             .filter(|m| m.id.0 == "web::web::user")
             .count(),
-        3,
-        "three colliding user modules: {:?}",
+        1,
+        "one surviving user module: {:?}",
+        module_ids(&graph)
+    );
+    let user = find_module(&graph, "web::web::user");
+    assert!(
+        user.source_path
+            .as_ref()
+            .unwrap()
+            .ends_with("probe/user.ts"),
+        "shadow winner is user.ts: {:?}",
+        user.source_path
+    );
+    assert!(
+        graph.modules.iter().all(|m| match &m.source_path {
+            None => true,
+            Some(path) => {
+                let text = path.to_string_lossy();
+                !text.ends_with("probe/user.tsx") && !text.ends_with("probe/user/index.ts")
+            }
+        }),
+        "shadowed files never walked: {:?}",
         module_ids(&graph)
     );
     assert!(
@@ -366,5 +387,163 @@ fn import_semantics() {
         graph.diagnostics.iter().all(|d| d.code != "CFG001"),
         "no CFG001 for typescript: {:?}",
         graph.diagnostics
+    );
+}
+
+#[test]
+fn explicit_extension_literal_first() {
+    let root = fixture("ext");
+    let input = AnalysisInput {
+        workspace_root: root.clone(),
+        targets: vec![lib_target("web", "web", root.clone())],
+        deps: vec![],
+    };
+    let graph = analyze(&input);
+    let from = "web::web::main";
+
+    // `./exact.ts` names an existing file: the literal path resolves to a
+    // normal `Use` edge with no ambiguity diagnostic.
+    assert!(
+        graph.dependencies.iter().any(|d| d.from.0 == from
+            && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "web::web::exact")
+            && matches!(d.kind, DependencyKind::Use)),
+        "literal-extension edge missing: {:?}",
+        graph.dependencies
+    );
+    // `./shadowed.ts` names no file on disk (only `shadowed.tsx` exists,
+    // which the probe never consults under an explicit `.ts` stem): the
+    // miss path is unchanged — `SCOPE001` with the specifier verbatim.
+    assert!(
+        graph.diagnostics.iter().any(|d| d.code == "SCOPE001"
+            && d.message
+                == format!(
+                    "scope collision: {from} -> ./shadowed.ts; unresolved syntactic ownership"
+                )),
+        "explicit-extension miss SCOPE001 missing: {:?}",
+        graph.diagnostics
+    );
+    assert!(
+        graph.diagnostics.iter().all(|d| d.code != "MOD004"),
+        "literal hits are unambiguous: {:?}",
+        graph.diagnostics
+    );
+}
+
+#[test]
+fn tsconfig_jsonc_and_extends() {
+    // Both tsconfig files carry comments + trailing commas (strict JSON
+    // would fail them into defaults). The root config inherits every
+    // mapping from the base; the `override/` config replaces `paths`
+    // wholesale (child wins) while still inheriting `baseUrl`.
+    let root = fixture("extends");
+    let input = AnalysisInput {
+        workspace_root: root.clone(),
+        targets: vec![
+            lib_target("web", "web", root.clone()),
+            lib_target("web", "ovr", root.join("override")),
+        ],
+        deps: vec![],
+    };
+    let graph = analyze(&input);
+
+    let has_internal = |from: &str, to: &str| {
+        graph.dependencies.iter().any(|d| {
+            d.from.0 == from
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == to)
+                && matches!(d.kind, DependencyKind::Use)
+        })
+    };
+    // Inherited mappings resolve against the inherited `baseUrl`.
+    let from = "web::web::src::main";
+    assert!(
+        has_internal(from, "web::web::base::mod"),
+        "inherited @base/* edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        has_internal(from, "web::web::base-over::mod"),
+        "inherited @over/* edge missing: {:?}",
+        graph.dependencies
+    );
+    // The override replaces `paths` wholesale: `@over/*` reaches
+    // `over/mod.ts` (resolved against the inherited `baseUrl`, so the
+    // edge lands on the sibling target's module), while the base-only
+    // `@base/*` mapping is gone — `EXT001`, never a fallback edge.
+    let ofrom = "web::ovr::src::main";
+    assert!(
+        has_internal(ofrom, "web::web::over::mod"),
+        "overriding @over/* edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        !has_internal(ofrom, "web::web::base-over::mod"),
+        "base @over/* mapping must lose to the child: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        graph.diagnostics.iter().any(|d| d.code == "EXT001"
+            && d.message
+                == format!("unresolved external: {ofrom} -> @base/mod; no pinned version")),
+        "wholesale-replaced @base/* must miss: {:?}",
+        graph.diagnostics
+    );
+    assert_eq!(
+        graph.diagnostics.len(),
+        1,
+        "only the wholesale-miss diagnostic: {:?}",
+        graph.diagnostics
+    );
+}
+
+#[test]
+fn unfollowed_extends_warns_ts001_and_continues() {
+    // An `extends` reference to a missing file degrades to one `TS001`
+    // Warning; the entry file's own `paths` still resolve.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    std::fs::write(
+        tmp.path().join("tsconfig.json"),
+        "{\"extends\": \"./missing-base.json\", \"compilerOptions\": \
+         {\"paths\": {\"@/*\": [\"src/*\"]}}}",
+    )
+    .unwrap();
+    let src = tmp.path().join("src");
+    std::fs::create_dir(&src).unwrap();
+    std::fs::write(src.join("main.ts"), "import '@/lib';\n").unwrap();
+    std::fs::write(src.join("lib.ts"), "export const l = 1;\n").unwrap();
+    let input = AnalysisInput {
+        workspace_root: tmp.path().to_path_buf(),
+        targets: vec![lib_target("web", "web", tmp.path().to_path_buf())],
+        deps: vec![],
+    };
+    let graph = analyze(&input);
+
+    let ts001: Vec<_> = graph
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "TS001")
+        .collect();
+    assert_eq!(ts001.len(), 1, "exactly one TS001: {:?}", graph.diagnostics);
+    assert!(matches!(ts001[0].severity, DiagnosticSeverity::Warning));
+    assert!(
+        ts001[0]
+            .message
+            .starts_with("unfollowed tsconfig extends: "),
+        "TS001 text: {}",
+        ts001[0].message
+    );
+    assert!(
+        ts001[0].message.ends_with("; paths may be incomplete"),
+        "TS001 text: {}",
+        ts001[0].message
+    );
+    assert!(
+        graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "web::web::src::main"
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "web::web::src::lib")
+                && matches!(d.kind, DependencyKind::Use)),
+        "own paths still resolve past TS001: {:?}",
+        graph.dependencies
     );
 }

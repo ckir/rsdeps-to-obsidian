@@ -44,9 +44,10 @@
 //!   and unreadable/malformed `node_modules` copies are skipped silently:
 //!   shape is best-effort, syntax is strict. `yarn.lock` is parsed
 //!   best-effort (v1 `version "..."` lines; anything else ignored).
-//! - Tsconfigs are parsed with `serde_json` only (per brief, no new deps),
-//!   so JSONC conveniences (comments, trailing commas) are hard errors,
-//!   not supported syntax.
+//! - Tsconfigs are parsed with the shared JSONC-tolerant
+//!   `extends`-following loader ([`crate::tsconfig`]), so comments,
+//!   trailing commas, and `rootDir` inherited from a base config all work;
+//!   only a truly-unparseable tsconfig is a hard error (see above).
 
 use crate::config::Config;
 use crate::domain::{Package, Target, TargetKind};
@@ -420,18 +421,22 @@ pub fn discover_ts(config: &Config) -> Result<DiscoveredWorkspace, String> {
     };
 
     // One Lib target per tsconfig project file. Every file is parsed up
-    // front so a malformed tsconfig fails closed even where its target
-    // would lose the same-name tiebreak; then first sorted path wins per
-    // name with no diagnostic.
+    // front through the shared JSONC-tolerant `extends`-following loader
+    // so a malformed tsconfig fails closed even where its target would
+    // lose the same-name tiebreak; then first sorted path wins per name
+    // with no diagnostic. A partially-followed `extends` chain has no
+    // diagnostics channel here, so the partial merge (notably an inherited
+    // `rootDir`) is used as-is.
     let mut configs = Vec::new();
     collect_tsconfigs(&root, &mut configs);
     configs.sort();
-    let mut parsed: Vec<(PathBuf, serde_json::Value)> = Vec::with_capacity(configs.len());
+    let mut parsed: Vec<(PathBuf, crate::tsconfig::MergedTsConfig)> =
+        Vec::with_capacity(configs.len());
     for path in &configs {
-        parsed.push((path.clone(), parse_json_file(path)?));
+        parsed.push((path.clone(), crate::tsconfig::load_merged_tsconfig(path)?));
     }
     let mut libs: BTreeMap<String, PathBuf> = BTreeMap::new();
-    for (path, value) in &parsed {
+    for (path, merged) in &parsed {
         let dir = path
             .parent()
             .map(Path::to_path_buf)
@@ -445,12 +450,7 @@ pub fn discover_ts(config: &Config) -> Result<DiscoveredWorkspace, String> {
             None => short_name(&pkg_name).to_string(),
             Some(stem) => stem,
         };
-        let root_source = value
-            .get("compilerOptions")
-            .and_then(|c| c.get("rootDir"))
-            .and_then(|r| r.as_str())
-            .map(|r| absolutize(Path::new(r), &dir))
-            .unwrap_or(dir);
+        let root_source = merged.root_dir.clone().unwrap_or(dir);
         libs.entry(name).or_insert(root_source);
     }
 

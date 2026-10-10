@@ -14,18 +14,24 @@
 //! mirroring Python `__init__.py`); directories without an index become
 //! file-less namespace modules (mirroring Python PEP 420) so `mod`
 //! containment chains stay complete. `Bin` targets are single root modules
-//! each. Same-directory `user.ts` vs `user.tsx` siblings are DISTINCT modules
-//! (no `MOD003` analog): they share an id but keep their own `source_path`,
-//! and collisions surface only at probe time as `MOD004`.
+//! each. Probe-shadowed siblings (`user.tsx` behind `user.ts`,
+//! `user/index.ts` behind either) are skipped at walk time: at most one
+//! module per id, mirroring the first-hit-wins probe (Rust `MOD002`
+//! tradeoff — a shadowed file's imports go with it, and probe-time
+//! `MOD004` already warns on use).
 //!
 //! # Resolution rules (brief-governed, spec §3)
 //!
-//! * Relative specifiers (`./`, `../`) probe the importing file's directory
+//! * Relative specifiers (`./`, `../`) with an explicit probed extension
+//!   (`.ts/.tsx/.mts/.cts/.d.ts`) try the literal path first: an existing
+//!   regular file resolves with no `MOD004` (unambiguous), otherwise the
+//!   pinned probe below runs unchanged. All other relative specifiers
+//!   probe the importing file's directory
 //!   in the pinned order `.ts/.tsx/.mts/.cts`, `/index` barrels, then
 //!   `.d.ts`, first-hit-wins; a later existing candidate yields one `MOD004`
 //!   Warning naming the hit and the first loser. Relative specifiers NEVER
 //!   consult `paths`. A hit on a file with no walked module (`.d.ts`,
-//!   outside the walk) is `SCOPE001`, as is a total miss.
+//!   outside the walk, or walk-shadowed) is `SCOPE001`, as is a total miss.
 //! * Bare specifiers consult `paths` first (keys longest-literal-prefix-first
 //!   with lexical ties, first matching key wins, single `*` substitution,
 //!   resolved against `baseUrl`, default the tsconfig dir), then the
@@ -52,8 +58,11 @@
 //!   Rust-only per spec §2, as with Python.
 //! * The tsconfig is located per target by ancestor walk from `root_source`
 //!   (nearest `tsconfig*.json`, `node_modules/` never considered) and
-//!   re-read here; a missing (or unreadable) tsconfig means defaults (id
-//!   base = target root, no `paths` map). `extends` is not followed.
+//!   loaded through the shared JSONC-tolerant `extends`-following loader
+//!   ([`crate::tsconfig`]); a missing (or unreadable) tsconfig means
+//!   defaults (id base = target root, no `paths` map). A partially
+//!   followed `extends` chain yields one `TS001` Warning per target and
+//!   the partial merge is used.
 
 use crate::domain::{
     Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
@@ -176,11 +185,14 @@ struct PathEntry {
     targets: Vec<String>,
 }
 
-/// The per-target tsconfig view: id base, `baseUrl`, and sorted `paths`.
+/// The per-target tsconfig view: id base, `baseUrl`, sorted `paths`, and
+/// the first unfollowed `extends` reference (if any — reported as `TS001`
+/// where the walk left the chain incomplete).
 struct TsConfig {
     base_dir: PathBuf,
     base_url: PathBuf,
     paths: Vec<PathEntry>,
+    unfollowed: Option<String>,
 }
 
 fn root_id(target: &Target) -> ModuleId {
@@ -249,27 +261,6 @@ fn io_diag(path: &Path, detail: &str) -> Diagnostic {
     }
 }
 
-/// Classify a walked file name: `None` for skipped (`.d.ts`) and unhandled
-/// names, else the id segment contribution (`None` = barrel, segment dropped).
-fn ts_segments(file_name: &str) -> Option<Option<String>> {
-    if file_name.ends_with(".d.ts") {
-        return None;
-    }
-    for ext in [".ts", ".tsx", ".mts", ".cts"] {
-        if let Some(stem) = file_name.strip_suffix(ext) {
-            if stem.is_empty() {
-                return None;
-            }
-            return Some(if stem == "index" {
-                None
-            } else {
-                Some(stem.to_string())
-            });
-        }
-    }
-    None
-}
-
 /// The nearest `tsconfig*.json` at or above `start` (`tsconfig.json` wins a
 /// shared dir, else the lexicographically smallest name), never inside a
 /// `node_modules/` dir.
@@ -312,17 +303,22 @@ fn find_tsconfig(start: &Path) -> Option<PathBuf> {
     }
 }
 
-/// Load the per-target [`TsConfig`]: base dir = tsconfig dir (id base),
-/// `baseUrl` joined to it (default the dir itself), `paths` sorted
-/// longest-literal-prefix-first with lexical ties. Anything unreadable or
-/// misshapen means defaults (discovery already fails closed on malformed
-/// tsconfigs, so this path is best-effort only).
+/// Load the per-target [`TsConfig`] via the shared JSONC-tolerant
+/// `extends`-following loader ([`crate::tsconfig::load_merged_tsconfig`]):
+/// base dir = entry tsconfig dir (id base), `baseUrl` defaulting to it,
+/// `paths` sorted longest-literal-prefix-first with lexical ties. A
+/// missing tsconfig means defaults (id base = target root, no paths); an
+/// unreadable one also means defaults (discovery already fails closed on
+/// malformed tsconfigs upstream, so this path is best-effort only). A
+/// partially-followed chain is kept as `unfollowed` for the `TS001`
+/// diagnostic at the analyze site.
 fn load_tsconfig(path: Option<&Path>, target_root: &Path) -> TsConfig {
     let Some(path) = path else {
         return TsConfig {
             base_dir: target_root.to_path_buf(),
             base_url: target_root.to_path_buf(),
             paths: Vec::new(),
+            unfollowed: None,
         };
     };
     let dir = path
@@ -333,51 +329,29 @@ fn load_tsconfig(path: Option<&Path>, target_root: &Path) -> TsConfig {
         base_dir: dir.clone(),
         base_url: dir.clone(),
         paths: Vec::new(),
+        unfollowed: None,
     };
-    let Ok(text) = std::fs::read_to_string(path) else {
+    let Ok(merged) = crate::tsconfig::load_merged_tsconfig(path) else {
         return fallback();
     };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return fallback();
-    };
-    let compiler = value.get("compilerOptions");
-    let base_url = compiler
-        .and_then(|c| c.get("baseUrl"))
-        .and_then(|b| b.as_str())
-        .map(|b| lex_normalize(&dir.join(b)))
-        .unwrap_or_else(|| dir.clone());
+    let base_url = merged.base_url.unwrap_or_else(|| dir.clone());
     let mut paths: Vec<PathEntry> = Vec::new();
-    if let Some(map) = compiler
-        .and_then(|c| c.get("paths"))
-        .and_then(|p| p.as_object())
-    {
-        for (key, targets) in map {
-            let Some(array) = targets.as_array() else {
-                continue;
-            };
-            let list: Vec<String> = array
-                .iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect();
-            if list.is_empty() {
-                continue;
-            }
-            match key.find('*') {
-                Some(i) => paths.push(PathEntry {
-                    key: key.clone(),
-                    prefix: key[..i].to_string(),
-                    suffix: key[i + 1..].to_string(),
-                    has_star: true,
-                    targets: list,
-                }),
-                None => paths.push(PathEntry {
-                    key: key.clone(),
-                    prefix: key.clone(),
-                    suffix: String::new(),
-                    has_star: false,
-                    targets: list,
-                }),
-            }
+    for (key, list) in &merged.paths {
+        match key.find('*') {
+            Some(i) => paths.push(PathEntry {
+                key: key.clone(),
+                prefix: key[..i].to_string(),
+                suffix: key[i + 1..].to_string(),
+                has_star: true,
+                targets: list.clone(),
+            }),
+            None => paths.push(PathEntry {
+                key: key.clone(),
+                prefix: key.clone(),
+                suffix: String::new(),
+                has_star: false,
+                targets: list.clone(),
+            }),
         }
     }
     paths.sort_by(|a, b| {
@@ -390,6 +364,7 @@ fn load_tsconfig(path: Option<&Path>, target_root: &Path) -> TsConfig {
         base_dir: dir,
         base_url,
         paths,
+        unfollowed: merged.unfollowed,
     }
 }
 
@@ -448,10 +423,13 @@ fn entry_module(target: &Target, segments: &[String], file: Option<PathBuf>) -> 
     }
 }
 
-/// Recursively walk the target root: every `.ts/.tsx/.mts/.cts` file (except
-/// `.d.ts`, skipped silently) becomes a module; `index.*` barrels denote the
-/// directory module. Same-directory `user.ts` vs `user.tsx` siblings keep
-/// their distinct modules (shared id, distinct paths) by design.
+/// Recursively walk the target root: every `.ts/.tsx/.mts/.cts` file
+/// (except `.d.ts`, skipped silently) becomes a module, EXCEPT files
+/// shadowed by a same-identity sibling earlier in probe order — at most one
+/// module per id. `index.*` barrels denote the directory module. Shadowing
+/// mirrors the probe walk (Rust `MOD002` tradeoff): a shadowed file's
+/// imports go with it, and probe-time `MOD004` already warns on use, so no
+/// new diagnostic is emitted here.
 fn walk_lib(target: &Target, base: &Path) -> Vec<Entry> {
     let mut entries = Vec::new();
     walk_dir(target, base, &target.root_source, &mut entries);
@@ -483,7 +461,47 @@ fn walk_lib(target: &Target, base: &Path) -> Vec<Entry> {
     entries
 }
 
+/// The shadow group and probe rank of a walked file name: `None` for
+/// skipped (`.d.ts`) and unhandled names, else the group (`None` = the
+/// directory's own `index.*` barrel, `Some(stem)` = a stem group shared
+/// with a `stem/` subdirectory barrel) and the rank within it (extension
+/// order `.ts/.tsx/.mts/.cts`; subdirectory barrels sort after every
+/// same-dir file, matching [`PROBE_SUFFIXES`]).
+fn file_group(file_name: &str) -> Option<(Option<String>, u8)> {
+    if file_name.ends_with(".d.ts") {
+        return None;
+    }
+    for (rank, ext) in [".ts", ".tsx", ".mts", ".cts"].iter().enumerate() {
+        if let Some(stem) = file_name.strip_suffix(ext) {
+            if stem.is_empty() {
+                return None;
+            }
+            if stem == "index" {
+                return Some((None, rank as u8));
+            }
+            return Some((Some(stem.to_string()), rank as u8));
+        }
+    }
+    None
+}
+
 fn walk_dir(target: &Target, base: &Path, dir: &Path, entries: &mut Vec<Entry>) {
+    walk_dir_inner(target, base, dir, entries, false);
+}
+
+/// Walk one directory: the lowest probe rank per shadow group wins and
+/// every other same-group file is skipped entirely (R1). `skip_barrel` is
+/// set when the parent directory already kept a same-stem file that
+/// shadows this directory's `index.*` barrel (any same-dir file outranks
+/// any subdirectory barrel, since barrel ranks start at 4): the barrel is
+/// skipped but the directory is still descended into for its other files.
+fn walk_dir_inner(
+    target: &Target,
+    base: &Path,
+    dir: &Path,
+    entries: &mut Vec<Entry>,
+    skip_barrel: bool,
+) {
     let rel: Vec<String> = dir
         .strip_prefix(base)
         .ok()
@@ -493,24 +511,46 @@ fn walk_dir(target: &Target, base: &Path, dir: &Path, entries: &mut Vec<Entry>) 
                 .collect()
         })
         .unwrap_or_default();
-    for file in sorted_files(dir) {
+    let files = sorted_files(dir);
+    let mut best: HashMap<Option<String>, u8> = HashMap::new();
+    for file in &files {
         let Some(name) = file.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        let Some(contribution) = ts_segments(name) else {
+        if let Some((group, rank)) = file_group(name) {
+            best.entry(group)
+                .and_modify(|kept| *kept = (*kept).min(rank))
+                .or_insert(rank);
+        }
+    }
+    for file in &files {
+        let Some(name) = file.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
+        let Some((group, rank)) = file_group(name) else {
+            continue;
+        };
+        if group.is_none() && skip_barrel {
+            continue;
+        }
+        if rank > best[&group] {
+            continue;
+        }
         let mut segments = rel.clone();
-        if let Some(segment) = contribution {
+        if let Some(segment) = group {
             segments.push(segment);
         }
         entries.push(Entry {
-            module: entry_module(target, &segments, Some(file)),
+            module: entry_module(target, &segments, Some(file.clone())),
             segments,
         });
     }
     for sub in sorted_dirs(dir) {
-        walk_dir(target, base, &sub, entries);
+        let shadowed = sub
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|stem| best.contains_key(&Some(stem.to_string())));
+        walk_dir_inner(target, base, &sub, entries, shadowed);
     }
 }
 
@@ -757,6 +797,19 @@ fn resolve_use(
     diags: &mut Vec<Diagnostic>,
 ) -> Resolution {
     if is_relative(&raw.spec) {
+        // Explicit-extension specifiers (`./user.ts`) try the literal path
+        // first: an existing regular file resolves with no `MOD004`
+        // (unambiguous); otherwise the pinned probe sequence runs unchanged.
+        let literal_spec = raw.spec.trim_end_matches('/');
+        if [".ts", ".tsx", ".mts", ".cts", ".d.ts"]
+            .iter()
+            .any(|ext| literal_spec.ends_with(ext))
+        {
+            let literal = lex_normalize(&raw.dir.join(literal_spec));
+            if literal.is_file() {
+                return resolve_hit(raw, &literal, by_file);
+            }
+        }
         let base = lex_normalize(&raw.dir.join(&raw.spec));
         return match probe(&base) {
             Some((hit, loser)) => {
@@ -870,6 +923,16 @@ impl Analyzer for TsAnalyzer {
         for target in &input.targets {
             let tsconfig_path = find_tsconfig(&target.root_source);
             let cfg = load_tsconfig(tsconfig_path.as_deref(), &target.root_source);
+            if let Some(unfollowed) = &cfg.unfollowed {
+                diagnostics.push(Diagnostic {
+                    severity: DiagnosticSeverity::Warning,
+                    code: "TS001".to_string(),
+                    message: format!(
+                        "unfollowed tsconfig extends: {unfollowed}; paths may be incomplete"
+                    ),
+                    source_span: None,
+                });
+            }
             let entries = match target.kind {
                 TargetKind::Lib => {
                     let walked = walk_lib(target, &cfg.base_dir);

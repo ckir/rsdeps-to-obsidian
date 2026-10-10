@@ -19,6 +19,7 @@ pub mod resolver;
 pub mod resolver_py;
 pub mod resolver_ts;
 pub mod ts_parse;
+pub mod tsconfig;
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
