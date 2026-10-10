@@ -7,6 +7,7 @@ pub enum Lang {
     Rust,
     Python,
     Typescript,
+    Csharp,
 }
 
 impl std::fmt::Display for Lang {
@@ -16,6 +17,7 @@ impl std::fmt::Display for Lang {
             Lang::Rust => write!(f, "rust"),
             Lang::Python => write!(f, "python"),
             Lang::Typescript => write!(f, "typescript"),
+            Lang::Csharp => write!(f, "csharp"),
         }
     }
 }
@@ -29,6 +31,7 @@ impl Lang {
             Lang::Rust => "rust",
             Lang::Python => "python",
             Lang::Typescript => "typescript",
+            Lang::Csharp => "csharp",
         }
     }
 }

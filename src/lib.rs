@@ -6,6 +6,7 @@ pub const GENERATOR: &str = "cargo-obsidian-graph";
 pub mod commit;
 pub mod config;
 pub mod diag;
+pub mod discovery_cs;
 pub mod discovery_py;
 pub mod discovery_ts;
 pub mod domain;
@@ -50,7 +51,8 @@ pub struct RunSummary {
 /// Filename of the machine-readable graph inside the output root.
 pub const GRAPH_FILENAME: &str = "graph.json";
 
-/// Resolve the language backend's [`Analyzer`]. All three arms are live.
+/// Resolve the language backend's [`Analyzer`]. The Rust, Python, and
+/// TypeScript arms are live; C# resolves once its analyzer lands.
 pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, String> {
     match lang {
         // `Auto` never reaches here (`run()` resolves it first); treating it
@@ -58,11 +60,12 @@ pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, S
         config::Lang::Auto | config::Lang::Rust => Ok(Box::new(resolver::SynAnalyzer)),
         config::Lang::Python => Ok(Box::new(resolver_py::PyAnalyzer)),
         config::Lang::Typescript => Ok(Box::new(resolver_ts::TsAnalyzer)),
+        config::Lang::Csharp => Err("csharp analyzer not yet implemented".to_string()),
     }
 }
 
-/// Run project discovery for `lang`. The Rust, Python, and TypeScript arms
-/// are all live.
+/// Run project discovery for `lang`. The Rust, Python, TypeScript, and C#
+/// arms are all live.
 pub fn discover_for(
     lang: config::Lang,
     config: &config::Config,
@@ -71,6 +74,7 @@ pub fn discover_for(
         config::Lang::Auto | config::Lang::Rust => metadata::discover(config),
         config::Lang::Python => discovery_py::discover_py(config),
         config::Lang::Typescript => discovery_ts::discover_ts(config),
+        config::Lang::Csharp => discovery_cs::discover_cs(config),
     }
 }
 

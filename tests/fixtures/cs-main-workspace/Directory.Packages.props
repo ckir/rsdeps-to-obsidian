@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <PackageVersion Include="CentralLib" VersionOverride="2.1.0" />
+    <PackageVersion Include="PropsLib" Version="4.0.0" />
+  </ItemGroup>
+</Project>

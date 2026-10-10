@@ -1,0 +1,8 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{9A19103F-16F7-4638-BEED-7A86BFCD17B0}") = "Inner", "Inner\Inner.csproj", "{D4444444-4444-4444-4444-444444444444}"
+EndProject
+Project("{9A19103F-16F7-4638-BEED-7A86BFCD17B0}") = "Top", "..\Top\Top.csproj", "{E5555555-5555-5555-5555-555555555555}"
+EndProject
+Global
+EndGlobal
