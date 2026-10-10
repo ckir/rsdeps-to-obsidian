@@ -28,21 +28,21 @@
 //!
 //! # Resolution context and rules (brief-governed, spec section 9)
 //!
-//! Each module resolves the per-target context union: its file's explicit
-//! `using` directives, the project-wide explicit `global using` set
-//! (collected in walk phase 1 across the target's files), and the pinned
-//! per-TFM implicit sets (union only of the target's TFMs). A `global`
-//! directive is never an edge by itself: every edge is module-to-module
-//! through the order below, and ambient (global/implicit) entries that fail
-//! to resolve stay fully silent — only explicit per-file usings yield
-//! diagnostics, so one unresolvable `global using` cannot flood every
-//! module with `SCOPE001`.
+//! Each module resolves its file's explicit `using` directives. The
+//! project-wide explicit `global using` set (collected in walk phase 1
+//! across the target's files) and the pinned per-TFM implicit sets (union
+//! only of the target's TFMs) are retained in the walk structs as context,
+//! but they are gated to silent: ambient entries never produce edges and
+//! never produce diagnostics (spec section 9.2). Only explicit per-file
+//! usings yield edges or diagnostics, so one unresolvable `global using`
+//! cannot flood every module with edges or `SCOPE001`.
 //!
 //! Resolution is longest-prefix throughout, in order: (a) the own target's
-//! declared namespaces; (a2) the own package-name strip arm (first segment
-//! equal to the owning package name resolves the remainder against the
-//! package's `Lib` trees: exactly one match -> `Internal`, zero or several
-//! -> `SCOPE001`, never external); (b) directly-referenced projects'
+//! declared namespaces; (a2) the same-package fallback (the FULL unmodified
+//! segments against the package's OTHER targets' trees, Lib and Bin alike:
+//! C# namespaces are global-rooted, so no package prefix is ever stripped;
+//! exactly one matching target -> `Internal`, several -> `SCOPE001`
+//! conclusively, zero -> fall through); (b) directly-referenced projects'
 //! namespaces (one hop, no transitivity; one edge per owning package, so a
 //! multi-TFM package still yields one edge; the same namespace in 2+
 //! referenced packages -> `SCOPE001`, no edge); (c) `PackageReference`
@@ -73,7 +73,7 @@
 use crate::diag::sort_diagnostics;
 use crate::domain::{
     Dependency, DependencyKind, DependencyTarget, Diagnostic, DiagnosticSeverity, Module, Package,
-    SourceSpan, Target, TargetKind, WorkspaceGraph,
+    SourceSpan, Target, WorkspaceGraph,
 };
 use crate::graph::{dedup_dependencies, sort_graph};
 use crate::ids::{make_external_id, make_module_id, ModuleId, TargetId};
@@ -168,8 +168,8 @@ struct CsUse {
     /// Rust/Python/TypeScript).
     alias: Option<String>,
     /// `true` for the module's own file directives (edge or diagnostic);
-    /// `false` for ambient (global/implicit) context (edge or silence, so
-    /// one unresolvable `global using` cannot flood every module).
+    /// `false` for ambient (global/implicit) context, which the analyzer
+    /// skips outright: silent, never an edge, never a diagnostic.
     explicit: bool,
     span: Option<SourceSpan>,
 }
@@ -1062,9 +1062,8 @@ fn longest_prefix(
 #[allow(clippy::too_many_arguments)]
 fn resolve_use(
     raw: &CsUse,
-    owner: &Target,
     own_tree: &HashMap<Vec<String>, ModuleId>,
-    lib_trees: &[&HashMap<Vec<String>, ModuleId>],
+    other_trees: &[&HashMap<Vec<String>, ModuleId>],
     ref_tables: &HashMap<String, HashMap<Vec<String>, ModuleId>>,
     dep_names: &[(Vec<String>, String)],
     deps_by_name: &HashMap<String, Vec<&crate::metadata::ExternalDep>>,
@@ -1080,27 +1079,26 @@ fn resolve_use(
     if let Some(id) = hit {
         return Resolution::Edge(DependencyTarget::Internal(id));
     }
-    // (a2) Own-package bare arm: strip the owning package name and resolve
-    // the remainder against the package's `Lib` trees (exactly one match
-    // -> `Internal`; zero or several -> `SCOPE001`; own namespace is never
-    // external, so this arm is conclusive).
-    if raw.segments[0] == owner.package_id.0 && !lib_trees.is_empty() {
-        let remainder = &raw.segments[1..];
+    // (a2) Same-package fallback: the FULL unmodified segments against the
+    // package's OTHER targets' trees (Lib and Bin alike — C# namespaces are
+    // global-rooted, so no package prefix is ever stripped). Exactly one
+    // matching target -> `Internal`; several -> `SCOPE001` (conclusive:
+    // same-package ambiguity is never external); zero -> fall through.
+    if !other_trees.is_empty() {
         let mut hits: Vec<ModuleId> = Vec::new();
-        for tree in lib_trees {
-            let hit = if remainder.is_empty() {
-                tree.get(&Vec::new()).cloned()
-            } else {
-                longest_prefix(tree, remainder).0
-            };
-            if let Some(id) = hit {
+        for tree in other_trees {
+            if let (Some(id), _) = longest_prefix(tree, &raw.segments) {
                 hits.push(id);
             }
         }
+        hits.sort_by(|a, b| a.0.cmp(&b.0));
+        hits.dedup();
         if hits.len() == 1 {
             return Resolution::Edge(DependencyTarget::Internal(hits.swap_remove(0)));
         }
-        return Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span));
+        if hits.len() > 1 {
+            return Resolution::Unresolved(scope_diag(&raw.from, &raw.path, &raw.span));
+        }
     }
     // (b) Directly-referenced projects' namespaces (one hop): longest-prefix
     // per referenced package; exactly one owning package -> `Internal`, 2+
@@ -1247,7 +1245,7 @@ impl Analyzer for CsAnalyzer {
             .collect();
         let mut ref_of: HashMap<&TargetId, HashMap<String, HashMap<Vec<String>, ModuleId>>> =
             HashMap::new();
-        let mut lib_of: HashMap<&TargetId, Vec<&TargetId>> = HashMap::new();
+        let mut sib_of: HashMap<&TargetId, Vec<&TargetId>> = HashMap::new();
         for target in &input.targets {
             let mut ref_tables: HashMap<String, HashMap<Vec<String>, ModuleId>> = HashMap::new();
             if let Some(walk) = walks.get(&target.id) {
@@ -1279,12 +1277,13 @@ impl Analyzer for CsAnalyzer {
                 }
             }
             ref_of.insert(&target.id, ref_tables);
-            lib_of.insert(
+            // Same-package OTHER targets (any kind) for the (a2) fallback.
+            sib_of.insert(
                 &target.id,
                 input
                     .targets
                     .iter()
-                    .filter(|t| t.kind == TargetKind::Lib && t.package_id == target.package_id)
+                    .filter(|t| t.package_id == target.package_id && t.id != target.id)
                     .map(|t| &t.id)
                     .collect(),
             );
@@ -1396,28 +1395,23 @@ impl Analyzer for CsAnalyzer {
             });
         }
 
-        // 4. Resolve every `CsUse` against its owning target's tree, the
-        // package's `Lib` trees, and the precomputed reference tables.
+        // 4. Resolve every explicit `CsUse` against its owning target's tree,
+        // the package's sibling-target trees, and the precomputed reference
+        // tables. Ambient (global/implicit) entries never resolve: they stay
+        // silent, producing neither edges nor diagnostics.
         for raw in &uses {
-            let Some(target_id) = owner_to_target.get(&raw.from) else {
-                if raw.explicit {
-                    diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
-                }
+            if !raw.explicit {
                 continue;
-            };
-            let Some(owner) = input.targets.iter().find(|t| &t.id == target_id) else {
-                if raw.explicit {
-                    diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
-                }
+            }
+            let Some(target_id) = owner_to_target.get(&raw.from) else {
+                diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
                 continue;
             };
             let Some(own_tree) = trees.get(target_id) else {
-                if raw.explicit {
-                    diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
-                }
+                diagnostics.push(scope_diag(&raw.from, &raw.path, &raw.span));
                 continue;
             };
-            let lib_trees: Vec<&HashMap<Vec<String>, ModuleId>> = lib_of
+            let other_trees: Vec<&HashMap<Vec<String>, ModuleId>> = sib_of
                 .get(target_id)
                 .cloned()
                 .unwrap_or_default()
@@ -1428,9 +1422,8 @@ impl Analyzer for CsAnalyzer {
             let ref_tables = ref_of.get(target_id).unwrap_or(&empty_refs);
             match resolve_use(
                 raw,
-                owner,
                 own_tree,
-                &lib_trees,
+                &other_trees,
                 ref_tables,
                 &dep_names,
                 &deps_by_name,
@@ -1442,9 +1435,8 @@ impl Analyzer for CsAnalyzer {
                     kind: DependencyKind::Use,
                     source_span: raw.span.clone(),
                 }),
-                // Ambient misses stay silent; explicit misses report.
-                Resolution::Unresolved(diag) if raw.explicit => diagnostics.push(diag),
-                Resolution::Unresolved(_) | Resolution::Skip => {}
+                Resolution::Unresolved(diag) => diagnostics.push(diag),
+                Resolution::Skip => {}
             }
         }
 

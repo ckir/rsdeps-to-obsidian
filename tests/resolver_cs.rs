@@ -36,6 +36,16 @@ fn lib_target(pkg: &str, name: &str, root: PathBuf) -> Target {
     }
 }
 
+fn bin_target(pkg: &str, name: &str, root: PathBuf) -> Target {
+    Target {
+        id: make_target_id(pkg, "bin", name).unwrap(),
+        package_id: PackageId(pkg.to_string()),
+        name: name.to_string(),
+        kind: TargetKind::Bin,
+        root_source: root,
+    }
+}
+
 fn analyze(input: &AnalysisInput) -> rsdeps2obsidian::domain::WorkspaceGraph {
     CsAnalyzer.analyze(input).expect("csharp analysis succeeds")
 }
@@ -211,34 +221,38 @@ fn import_semantics() {
         module_ids(&graph),
         graph.dependencies
     );
-    // The `global using` in `Global.cs` is project-level context: it enables
-    // the edge from `Consumer.cs`, which holds no directive of its own.
+    // The `global using` in `Global.cs` is gated to silent: the bare
+    // `Consumer.cs` (no directive of its own) gains NO edge from it, and the
+    // global yields NO edge from its own file's module either.
+    for from in ["app::app::App::Consumer", "app::app::App::Glob"] {
+        assert!(
+            !graph
+                .dependencies
+                .iter()
+                .any(|d| d.from.0 == from && matches!(d.kind, DependencyKind::Use)),
+            "global must stay silent for {from}: {:?}",
+            graph.dependencies
+        );
+    }
+    // With the globals present-but-inert, an explicit `using` of the same
+    // namespace still resolves normally.
     assert!(
-        has_use_edge(&graph, "app::app::App::Consumer", utils),
-        "global-enabled edge missing: {:?}",
+        has_use_edge(&graph, "app::app::App::Explicit", utils),
+        "explicit edge alongside inert globals missing: {:?}",
         graph.dependencies
     );
-    // Explicit `System.*` is BCL-silent: the only outgoing `Use` edge from
-    // `Sys` is the global-enabled one to `App.Utils` (nothing `System`).
-    let sys_uses: Vec<_> = graph
-        .dependencies
-        .iter()
-        .filter(|d| d.from.0 == "app::app::App::Sys" && matches!(d.kind, DependencyKind::Use))
-        .collect();
-    assert_eq!(
-        sys_uses.len(),
-        1,
-        "Sys keeps only the global-enabled edge: {:?}",
-        graph.dependencies
-    );
+    // Explicit `System.*` is BCL-silent: no `Use` edge at all from `Sys`.
     assert!(
-        matches!(&sys_uses[0].to, DependencyTarget::Internal(id) if id.0 == utils),
-        "Sys edge target: {:?}",
+        !graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "app::app::App::Sys" && matches!(d.kind, DependencyKind::Use)),
+        "BCL using must stay silent: {:?}",
         graph.dependencies
     );
     // A pinned `System.*` package still loses to the BCL skip (consulted
-    // before external lookup): no `External` edge, and the only outgoing
-    // `Use` edge is the global-enabled one to `App.Utils`.
+    // before external lookup): no `System` `External` edge and no `Use`
+    // edge at all from `JsonMod`.
     assert!(
         !graph
             .dependencies
@@ -247,20 +261,12 @@ fn import_semantics() {
         "BCL skip beats the pinned external: {:?}",
         graph.dependencies
     );
-    let json_uses: Vec<_> = graph
-        .dependencies
-        .iter()
-        .filter(|d| d.from.0 == "app::app::App::JsonMod" && matches!(d.kind, DependencyKind::Use))
-        .collect();
-    assert_eq!(
-        json_uses.len(),
-        1,
-        "JsonMod edges: {:?}",
-        graph.dependencies
-    );
     assert!(
-        matches!(&json_uses[0].to, DependencyTarget::Internal(id) if id.0 == utils),
-        "JsonMod edge target: {:?}",
+        !graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "app::app::App::JsonMod" && matches!(d.kind, DependencyKind::Use)),
+        "BCL using must stay silent: {:?}",
         graph.dependencies
     );
     // A pinned NuGet name is an `External` edge ...
@@ -404,6 +410,78 @@ fn bin_missing_root_fails_closed() {
             .iter()
             .any(|d| d.code == "IO001" && matches!(d.severity, DiagnosticSeverity::Error)),
         "missing-root IO001 missing: {:?}",
+        graph.diagnostics
+    );
+}
+
+#[test]
+fn same_package_fallback_edges() {
+    // Same-package full-path fallback (no package prefix is ever stripped):
+    // a `Bin` file's `using OwnPkg.Mod;` names the `Lib` tree's module, and
+    // a second `Lib` target's file resolves the same way (uniform rule,
+    // kind-blind). Exactly one `Internal` edge each, zero diagnostics.
+    let root = resolve_root();
+    let dir = root.join("fallback");
+    let graph = analyze(&AnalysisInput {
+        workspace_root: dir.clone(),
+        targets: vec![
+            lib_target("own", "own", dir.join("lib")),
+            lib_target("own", "second", dir.join("libb")),
+            bin_target("own", "tool", dir.join("tool")),
+        ],
+        deps: vec![],
+    });
+    let lib_mod = "own::own::OwnPkg::Mod";
+    assert!(
+        has_use_edge(&graph, "own::tool::OwnPkg::Tool", lib_mod),
+        "bin->lib fallback edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        has_use_edge(&graph, "own::second::OwnPkg::Other", lib_mod),
+        "lib->lib fallback edge missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        graph.diagnostics.is_empty(),
+        "fallback edges carry no diagnostics: {:?}",
+        graph.diagnostics
+    );
+}
+
+#[test]
+fn no_top_level_hijack() {
+    // Package `Web` declares both top-level `Models` and `Web.Models`; a
+    // `Bin` file's `using Web.Models;` must edge to the `Lib` `Web.Models`
+    // module — never to top-level `Models` (the stripped-remainder hijack
+    // the fallback replaced).
+    let root = resolve_root();
+    let dir = root.join("hijack");
+    let graph = analyze(&AnalysisInput {
+        workspace_root: dir.clone(),
+        targets: vec![
+            lib_target("Web", "Web", dir.join("lib")),
+            bin_target("Web", "tool", dir.join("tool")),
+        ],
+        deps: vec![],
+    });
+    assert!(
+        has_use_edge(&graph, "Web::tool::Web::Tool", "Web::Web::Web::Models"),
+        "fallback edge to Web.Models missing: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        !graph
+            .dependencies
+            .iter()
+            .any(|d| d.from.0 == "Web::tool::Web::Tool"
+                && matches!(&d.to, DependencyTarget::Internal(id) if id.0 == "Web::Web::Models")),
+        "top-level hijack edge must not exist: {:?}",
+        graph.dependencies
+    );
+    assert!(
+        graph.diagnostics.is_empty(),
+        "hijack-free resolution carries no diagnostics: {:?}",
         graph.diagnostics
     );
 }
