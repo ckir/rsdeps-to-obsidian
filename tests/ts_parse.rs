@@ -76,3 +76,51 @@ fn ts_and_tsx_import_queries_capture() {
     assert_eq!(tsx_imports[0].capture, "imp");
     assert_eq!(tsx_imports[0].start_row, 0);
 }
+
+#[test]
+fn csharp_namespace_and_using_queries_capture() {
+    let src = "using System;\nusing static System.Math;\nusing IO = System.IO;\nglobal using System.Collections.Generic;\nnamespace MyApp.Services\n{\n    public partial class Handler { }\n}\n";
+    let language: tree_sitter::Language = tree_sitter_c_sharp::LANGUAGE.into();
+    let tree = parse(language.clone(), src).expect("C# parse should succeed");
+    assert!(!tree.root_node().has_error());
+
+    let usings =
+        query_nodes(&tree, &language, src, "(using_directive) @use").expect("C# using query");
+    assert_eq!(usings.len(), 4);
+
+    let namespaces = query_nodes(&tree, &language, src, "(namespace_declaration) @ns")
+        .expect("C# namespace query");
+    assert_eq!(namespaces.len(), 1);
+
+    let classes =
+        query_nodes(&tree, &language, src, "(class_declaration) @cls").expect("C# class query");
+    assert_eq!(classes.len(), 1);
+
+    let file_scoped_src = "namespace MyApp.Other;\npublic class Worker {}\n";
+    let file_scoped_tree =
+        parse(language.clone(), file_scoped_src).expect("C# file-scoped parse should succeed");
+    assert!(!file_scoped_tree.root_node().has_error());
+
+    let file_scoped_ns = query_nodes(
+        &file_scoped_tree,
+        &language,
+        file_scoped_src,
+        "(file_scoped_namespace_declaration) @ns",
+    )
+    .expect("C# file-scoped namespace query");
+    assert_eq!(file_scoped_ns.len(), 1);
+
+    let block_ns_in_file_scoped = query_nodes(
+        &file_scoped_tree,
+        &language,
+        file_scoped_src,
+        "(namespace_declaration) @ns",
+    )
+    .expect("C# block namespace query over file-scoped src");
+    assert_eq!(block_ns_in_file_scoped.len(), 0);
+
+    let top_level_src = "Console.WriteLine(\"hi\");\nvar x = 1;\n";
+    let top_level_tree =
+        parse(language.clone(), top_level_src).expect("C# top-level parse should succeed");
+    assert!(!top_level_tree.root_node().has_error());
+}
