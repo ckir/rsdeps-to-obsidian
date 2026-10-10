@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="A.cs" />
+    <Compile Include="Sub\B.cs" />
+  </ItemGroup>
+</Project>

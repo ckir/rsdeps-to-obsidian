@@ -17,6 +17,7 @@ pub mod metadata;
 pub mod paths;
 pub mod render;
 pub mod resolver;
+pub mod resolver_cs;
 pub mod resolver_py;
 pub mod resolver_ts;
 pub mod ts_parse;
@@ -51,8 +52,8 @@ pub struct RunSummary {
 /// Filename of the machine-readable graph inside the output root.
 pub const GRAPH_FILENAME: &str = "graph.json";
 
-/// Resolve the language backend's [`Analyzer`]. The Rust, Python, and
-/// TypeScript arms are live; C# resolves once its analyzer lands.
+/// Resolve the language backend's [`Analyzer`]. All four language arms are
+/// live: Rust, Python, TypeScript, and C#.
 pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, String> {
     match lang {
         // `Auto` never reaches here (`run()` resolves it first); treating it
@@ -60,7 +61,7 @@ pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, S
         config::Lang::Auto | config::Lang::Rust => Ok(Box::new(resolver::SynAnalyzer)),
         config::Lang::Python => Ok(Box::new(resolver_py::PyAnalyzer)),
         config::Lang::Typescript => Ok(Box::new(resolver_ts::TsAnalyzer)),
-        config::Lang::Csharp => Err("csharp analyzer not yet implemented".to_string()),
+        config::Lang::Csharp => Ok(Box::new(resolver_cs::CsAnalyzer)),
     }
 }
 
