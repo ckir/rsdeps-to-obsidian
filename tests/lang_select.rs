@@ -82,10 +82,10 @@ fn registry_rust_python_ts_discovery_ok_analyzer_err_exact() {
         analyzer_for(Lang::Python).is_ok(),
         "Python analyzer must resolve (Task 4)"
     );
-    let Err(e) = analyzer_for(Lang::Typescript) else {
-        panic!("TypeScript analyzer must not resolve yet");
-    };
-    assert_eq!(e, "typescript support not yet implemented");
+    assert!(
+        analyzer_for(Lang::Typescript).is_ok(),
+        "TypeScript analyzer must resolve (Task 3)"
+    );
 
     let ws = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/min-workspace");
     let tmp = tempfile::TempDir::new().expect("tempdir");
