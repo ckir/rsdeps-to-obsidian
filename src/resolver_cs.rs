@@ -15,7 +15,9 @@
 //! A namespace repeated in one project (partial classes or not) merges to
 //! ONE node (`source_path` = first sorted file, `source_span` = the first
 //! declaration in that file); two namespaces in one file are distinct IDs
-//! sharing the file with distinct spans. Namespace-less files (top-level
+//! sharing the file with distinct spans. Merged namespace nodes resolve the
+//! FIRST sorted file's usings only (later files' usings are not unioned).
+//! Namespace-less files (top-level
 //! statements) fall back to one stem module from the project-relative path
 //! segments + stem (TypeScript precedent). The root module is exactly two
 //! segments, `{package}::{target.name}`.
@@ -1236,8 +1238,8 @@ impl Analyzer for CsAnalyzer {
         // Per-target reference tables (built once): each directly-referenced
         // project dir maps to its packages' namespace tables (candidate
         // targets sorted for determinism; refs outside the analyzed targets
-        // contribute nothing). Plus the per-target `Lib` co-target lists
-        // for the own-package strip arm.
+        // contribute nothing). Plus the same-package OTHER targets for the
+        // (a2) full-path fallback.
         let root_keys: HashMap<&TargetId, PathBuf> = input
             .targets
             .iter()
