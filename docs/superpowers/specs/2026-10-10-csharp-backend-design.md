@@ -1,6 +1,6 @@
 # C# / .NET Backend — Design
 
-**Status:** draft for review (builder check pending)
+**Status:** approved design pending owner review (builder check passed 2026-10-10 — 7 questions, all settled in §9, no open items)
 **Date:** 2026-10-10
 **Prior specs:** `2026-10-09-rsdeps-obsidian-mvp-design.md` (Rust, v0.4),
 `2026-10-09-multilang-python-typescript-design.md` (Python + TypeScript, v0.5)
@@ -116,3 +116,47 @@ solid (MSBuild states them explicitly).
   `obj/`+`bin/` — confirm exclusion list).
 - `ProjectReference` chains that leave the analyzed root (unresolved
   diagnostic with the referenced path, no traversal outside — confirm).
+
+## 9. Builder-check resolutions (my calls, 2026-10-10)
+
+The builder check asked seven questions; all resolved here from
+established precedent. Nothing below changes §§1–8 except where noted.
+
+1. **Using → owner mapping.** Longest-prefix match in order: (a) own
+   target's declared namespaces; (b) namespaces declared by directly
+   referenced projects (`ProjectReference` closure, one hop — §6);
+   (c) `PackageReference` package names by exact first-segment match
+   (case-insensitive); (d) BCL skip list → silent skip. No match anywhere
+   → SCOPE001, no edge. A using can therefore never fabricate a
+   cross-project edge (anti-goal §4 holds).
+2. **Global/implicit usings emit no edges.** Only explicit per-file `using`
+   directives produce edges; global and implicit sets are resolution
+   context only — ambient imports carry no structural information and
+   per-module edges for them would flood the graph.
+3. **ModuleId shape and merges.** Dotted namespace → `::` joins
+   (`MyApp.Services` → `{pkg}::{tgt}::MyApp::Services`); nested namespaces
+   use the full dotted path each; same namespace in several files of one
+   project (partial or not) merges to ONE node (`source_path` = first
+   sorted file); two namespaces in one file are distinct IDs sharing the
+   file (spans differ, filenames stay injective); namespace-less files use
+   project-relative path segments + stem (TypeScript precedent).
+4. **BCL treatment.** `System*` (pinned prefix list, plan stage) silently
+   skipped — never edges, never diagnostics (Python-stdlib precedent).
+   Skip is consulted before external lookup.
+5. **Multi-target duplication.** Each (project, TFM) Lib target gets the
+   full module set (separate namespaces, as lib/bin today); per-TFM
+   conditional references apply per target. `#if` regions are parsed
+   inclusively with NO cfg evaluation; encountering `#if` emits the
+   existing CFG001 text exactly once per run (Rust precedent).
+6. **ProjectReference granularity.** Every importer of a solely-owned
+   referenced namespace gets a direct Internal edge to that module;
+   transitive references are NOT followed (documented); same namespace in
+   two projects → ambiguity diagnostic, no edge (§6 stands).
+7. **Central management + discovery scope.** `Directory.Packages.props`
+   (incl. `VersionOverride`) and legacy `packages.config` are read for
+   versions; `Directory.Build.props` evaluation is a documented non-goal
+   (versions defined only there → unresolved diagnostic). Discovery walks
+   down from the input root for `*.csproj` (never above it); multiple
+   `.sln` files → union of member projects, deduped; `--lang auto`
+   priority becomes Cargo.toml > `*.sln`/`*.csproj` > pyproject/setup.py >
+   package.json.
