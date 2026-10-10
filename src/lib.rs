@@ -7,6 +7,7 @@ pub mod commit;
 pub mod config;
 pub mod diag;
 pub mod discovery_py;
+pub mod discovery_ts;
 pub mod domain;
 pub mod graph;
 pub mod ids;
@@ -60,9 +61,8 @@ pub fn analyzer_for(lang: config::Lang) -> Result<Box<dyn resolver::Analyzer>, S
     }
 }
 
-/// Run project discovery for `lang`. The Rust and Python arms are live; the
-/// TypeScript arm returns the same exact placeholder error as
-/// [`analyzer_for`].
+/// Run project discovery for `lang`. The Rust, Python, and TypeScript arms
+/// are all live.
 pub fn discover_for(
     lang: config::Lang,
     config: &config::Config,
@@ -70,7 +70,7 @@ pub fn discover_for(
     match lang {
         config::Lang::Auto | config::Lang::Rust => metadata::discover(config),
         config::Lang::Python => discovery_py::discover_py(config),
-        config::Lang::Typescript => Err("typescript support not yet implemented".to_string()),
+        config::Lang::Typescript => discovery_ts::discover_ts(config),
     }
 }
 

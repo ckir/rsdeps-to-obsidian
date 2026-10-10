@@ -3,8 +3,9 @@
 //! `detect_language` scans project files in priority
 //! `Cargo.toml` > `pyproject.toml`/`setup.py` > `package.json` (none → Rust).
 //! `analyzer_for`/`discover_for` resolve the Rust and Python arms live
-//! (Python analyzer went live in Task 4) while the TypeScript arms return
-//! the exact placeholder error. `run()` on a Rust workspace behaves exactly
+//! (Python analyzer went live in Task 4) while only the TypeScript
+//! *analyzer* arm still returns the exact placeholder error (TypeScript
+//! discovery went live with the TypeScript backend). `run()` on a Rust workspace behaves exactly
 //! as before (summary counts unchanged), and ambiguous autodetect (no
 //! explicit flag, >1 project file) appends one `LANG001` Info diagnostic.
 
@@ -70,7 +71,7 @@ fn detect_priority_and_default() {
 }
 
 #[test]
-fn registry_rust_python_ok_typescript_err_exact() {
+fn registry_rust_python_ts_discovery_ok_analyzer_err_exact() {
     assert!(
         analyzer_for(Lang::Rust).is_ok(),
         "Rust analyzer must resolve"
@@ -97,9 +98,9 @@ fn registry_rust_python_ok_typescript_err_exact() {
         discover_for(Lang::Python, &cfg).is_ok(),
         "Python discovery must resolve (file-only, no project file needed)"
     );
-    assert_eq!(
-        discover_for(Lang::Typescript, &cfg).unwrap_err(),
-        "typescript support not yet implemented"
+    assert!(
+        discover_for(Lang::Typescript, &cfg).is_ok(),
+        "TypeScript discovery must resolve (file-only, no project file needed)"
     );
 }
 
