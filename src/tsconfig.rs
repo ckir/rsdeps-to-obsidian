@@ -158,6 +158,7 @@ fn collect_layers(
                             if unfollowed.is_none() {
                                 *unfollowed = Some(path.display().to_string());
                             }
+                            layers.push((dir, value));
                             return Ok(());
                         }
                     }
@@ -354,6 +355,20 @@ mod tests {
             tmp.path(),
             "tsconfig.json",
             "{\"extends\": \"./nope.json\", \
+             \"compilerOptions\": {\"baseUrl\": \".\"}}",
+        );
+        let merged = load_merged_tsconfig(&path).expect("partial merge");
+        assert_eq!(merged.base_url, Some(tmp.path().to_path_buf()));
+        assert!(merged.unfollowed.is_some(), "unfollowed: {merged:?}");
+    }
+
+    #[test]
+    fn non_string_array_extends_keeps_own_values() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let path = write(
+            tmp.path(),
+            "tsconfig.json",
+            "{\"extends\": [123], \
              \"compilerOptions\": {\"baseUrl\": \".\"}}",
         );
         let merged = load_merged_tsconfig(&path).expect("partial merge");
