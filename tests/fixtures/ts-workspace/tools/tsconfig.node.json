@@ -1,0 +1,11 @@
+{
+  // Node tooling project: the missing base is recorded as TS001, not fatal,
+  // and the entry file's own paths still resolve against baseUrl below.
+  "extends": "./missing-base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@n/*": ["*"],
+    },
+  },
+}

@@ -1,0 +1,1 @@
+{"bin": {"cli": "./dist/cli.js", "ghost": "./missing.js"}, "name": "shop", "version": "1.0.0"}

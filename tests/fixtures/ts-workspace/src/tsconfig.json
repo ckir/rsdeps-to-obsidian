@@ -1,0 +1,5 @@
+{
+  // The main project inherits baseUrl, paths, and rootDir from the shared
+  // base above (this file defines none of its own).
+  "extends": "../tsconfig-base.json",
+}

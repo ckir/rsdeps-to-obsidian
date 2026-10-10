@@ -1,0 +1,17 @@
+import './user';
+import './exact.ts';
+export { x } from './lib';
+export * from './ghost';
+const a = require('./lib');
+const b = require(x);
+const c = import('./tmod');
+import type { T } from './tmod';
+import { q } from '@/deep/mod';
+import { l } from '@/lib';
+import { z } from 'lodash';
+import { n } from 'nm-only';
+import { u } from 'ghostpkg';
+import 'node:fs';
+import { f } from 'fs';
+import { o } from 'shop/other';
+import { g } from 'shop/ghost';

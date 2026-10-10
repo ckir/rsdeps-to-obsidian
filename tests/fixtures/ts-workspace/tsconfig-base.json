@@ -1,0 +1,12 @@
+{
+  // Shared base mappings: comments and trailing commas are JSONC, tolerated
+  // by the shared tsconfig loader (strict JSON would fail this file).
+  "compilerOptions": {
+    "baseUrl": "src",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["*"],
+      "@/deep/*": ["special/*"],
+    },
+  },
+}

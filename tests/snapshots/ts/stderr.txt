@@ -1,0 +1,7 @@
+warning[EXT001]: unresolved external: shop::shop::main -> ghostpkg; no pinned version (at src/main.ts:13)
+warning[EXT001]: unresolved external: shop::node::main -> ghostnode; no pinned version (at tools/main.ts:2)
+warning[MOD004]: ambiguous ts layout: both @@WORKSPACE@@/src/user.ts and @@WORKSPACE@@/src/user.tsx exist; using @@WORKSPACE@@/src/user.ts (at src/main.ts:1)
+warning[SCOPE001]: scope collision: shop::shop::main -> ./ghost; unresolved syntactic ownership (at src/main.ts:4)
+warning[SCOPE001]: scope collision: shop::shop::main -> shop/ghost; unresolved syntactic ownership (at src/main.ts:17)
+warning[TS001]: unfollowed tsconfig extends: @@WORKSPACE@@/tools/missing-base.json; paths may be incomplete
+error[IO001]: failed to read @@WORKSPACE@@/missing.js: No such file or directory (os error 2)

@@ -1,0 +1,391 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "packages": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "manifest_path": "@@WORKSPACE@@/package.json"
+    }
+  ],
+  "targets": [
+    {
+      "id": "shop::bin::cli",
+      "package_id": "shop",
+      "name": "cli",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/dist/cli.js"
+    },
+    {
+      "id": "shop::bin::ghost",
+      "package_id": "shop",
+      "name": "ghost",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/missing.js"
+    },
+    {
+      "id": "shop::lib::node",
+      "package_id": "shop",
+      "name": "node",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/tools"
+    },
+    {
+      "id": "shop::lib::shop",
+      "package_id": "shop",
+      "name": "shop",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/src"
+    }
+  ],
+  "modules": [
+    {
+      "id": "shop::cli",
+      "target_id": "shop::bin::cli",
+      "name": "cli",
+      "qualified_name": "cli",
+      "source_path": "@@WORKSPACE@@/dist/cli.js",
+      "source_span": null
+    },
+    {
+      "id": "shop::ghost",
+      "target_id": "shop::bin::ghost",
+      "name": "ghost",
+      "qualified_name": "ghost",
+      "source_path": "@@WORKSPACE@@/missing.js",
+      "source_span": null
+    },
+    {
+      "id": "shop::node",
+      "target_id": "shop::lib::node",
+      "name": "node",
+      "qualified_name": "node",
+      "source_path": "@@WORKSPACE@@/tools",
+      "source_span": null
+    },
+    {
+      "id": "shop::node::main",
+      "target_id": "shop::lib::node",
+      "name": "main",
+      "qualified_name": "main",
+      "source_path": "@@WORKSPACE@@/tools/main.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::node::util",
+      "target_id": "shop::lib::node",
+      "name": "util",
+      "qualified_name": "util",
+      "source_path": "@@WORKSPACE@@/tools/util.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop",
+      "target_id": "shop::lib::shop",
+      "name": "shop",
+      "qualified_name": "shop",
+      "source_path": "@@WORKSPACE@@/src",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::comp",
+      "target_id": "shop::lib::shop",
+      "name": "comp",
+      "qualified_name": "comp",
+      "source_path": "@@WORKSPACE@@/src/comp.tsx",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::exact",
+      "target_id": "shop::lib::shop",
+      "name": "exact",
+      "qualified_name": "exact",
+      "source_path": "@@WORKSPACE@@/src/exact.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::lib",
+      "target_id": "shop::lib::shop",
+      "name": "lib",
+      "qualified_name": "lib",
+      "source_path": "@@WORKSPACE@@/src/lib.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::main",
+      "target_id": "shop::lib::shop",
+      "name": "main",
+      "qualified_name": "main",
+      "source_path": "@@WORKSPACE@@/src/main.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::other",
+      "target_id": "shop::lib::shop",
+      "name": "other",
+      "qualified_name": "other",
+      "source_path": "@@WORKSPACE@@/src/other.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::routes",
+      "target_id": "shop::lib::shop",
+      "name": "routes",
+      "qualified_name": "routes",
+      "source_path": "@@WORKSPACE@@/src/routes/index.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::routes::user",
+      "target_id": "shop::lib::shop",
+      "name": "user",
+      "qualified_name": "routes/user",
+      "source_path": "@@WORKSPACE@@/src/routes/user.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::special",
+      "target_id": "shop::lib::shop",
+      "name": "special",
+      "qualified_name": "special",
+      "source_path": null,
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::special::mod",
+      "target_id": "shop::lib::shop",
+      "name": "mod",
+      "qualified_name": "special/mod",
+      "source_path": "@@WORKSPACE@@/src/special/mod.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::tmod",
+      "target_id": "shop::lib::shop",
+      "name": "tmod",
+      "qualified_name": "tmod",
+      "source_path": "@@WORKSPACE@@/src/tmod.ts",
+      "source_span": null
+    },
+    {
+      "id": "shop::shop::user",
+      "target_id": "shop::lib::shop",
+      "name": "user",
+      "qualified_name": "user",
+      "source_path": "@@WORKSPACE@@/src/user.ts",
+      "source_span": null
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "shop::node",
+      "to": "shop::node::main",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::node",
+      "to": "shop::node::util",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::node::main",
+      "to": "shop::node::util",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::node::main",
+      "to": "shop::shop::other",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::comp",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::exact",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::lib",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::main",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::other",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::routes",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::special",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::tmod",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop",
+      "to": "shop::shop::user",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop::comp",
+      "to": "shop::shop::lib",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::exact",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::lib",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::other",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::special::mod",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::tmod",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "shop::shop::user",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "lodash@4.17.21",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::main",
+      "to": "nm-only@9.9.9",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "shop::shop::routes",
+      "to": "shop::shop::routes::user",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "shop::shop::special",
+      "to": "shop::shop::special::mod",
+      "target_type": "internal",
+      "kind": "module"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: shop::shop::main -> ghostpkg; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/main.ts",
+        "line_start": 13,
+        "line_end": 13
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: shop::node::main -> ghostnode; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/tools/main.ts",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "MOD004",
+      "message": "ambiguous ts layout: both @@WORKSPACE@@/src/user.ts and @@WORKSPACE@@/src/user.tsx exist; using @@WORKSPACE@@/src/user.ts",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/main.ts",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: shop::shop::main -> ./ghost; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/main.ts",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: shop::shop::main -> shop/ghost; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/src/main.ts",
+        "line_start": 17,
+        "line_end": 17
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "TS001",
+      "message": "unfollowed tsconfig extends: @@WORKSPACE@@/tools/missing-base.json; paths may be incomplete",
+      "source_span": null
+    },
+    {
+      "severity": "error",
+      "code": "IO001",
+      "message": "failed to read @@WORKSPACE@@/missing.js: No such file or directory (os error 2)",
+      "source_span": null
+    }
+  ]
+}

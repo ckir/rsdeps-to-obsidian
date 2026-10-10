@@ -1,0 +1,99 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "generated_files": [
+    "graph.json",
+    "index.md",
+    "rust-external-lodash__4.17.21.md",
+    "rust-external-nm-only__9.9.9.md",
+    "shop__cli.md",
+    "shop__ghost.md",
+    "shop__node.md",
+    "shop__node__main.md",
+    "shop__node__util.md",
+    "shop__shop.md",
+    "shop__shop__comp.md",
+    "shop__shop__exact.md",
+    "shop__shop__lib.md",
+    "shop__shop__main.md",
+    "shop__shop__other.md",
+    "shop__shop__routes.md",
+    "shop__shop__routes__user.md",
+    "shop__shop__special.md",
+    "shop__shop__special__mod.md",
+    "shop__shop__tmod.md",
+    "shop__shop__user.md"
+  ],
+  "module_records": [
+    {
+      "module_id": "shop::cli",
+      "filename": "shop__cli.md"
+    },
+    {
+      "module_id": "shop::ghost",
+      "filename": "shop__ghost.md"
+    },
+    {
+      "module_id": "shop::node",
+      "filename": "shop__node.md"
+    },
+    {
+      "module_id": "shop::node::main",
+      "filename": "shop__node__main.md"
+    },
+    {
+      "module_id": "shop::node::util",
+      "filename": "shop__node__util.md"
+    },
+    {
+      "module_id": "shop::shop",
+      "filename": "shop__shop.md"
+    },
+    {
+      "module_id": "shop::shop::comp",
+      "filename": "shop__shop__comp.md"
+    },
+    {
+      "module_id": "shop::shop::exact",
+      "filename": "shop__shop__exact.md"
+    },
+    {
+      "module_id": "shop::shop::lib",
+      "filename": "shop__shop__lib.md"
+    },
+    {
+      "module_id": "shop::shop::main",
+      "filename": "shop__shop__main.md"
+    },
+    {
+      "module_id": "shop::shop::other",
+      "filename": "shop__shop__other.md"
+    },
+    {
+      "module_id": "shop::shop::routes",
+      "filename": "shop__shop__routes.md"
+    },
+    {
+      "module_id": "shop::shop::routes::user",
+      "filename": "shop__shop__routes__user.md"
+    },
+    {
+      "module_id": "shop::shop::special",
+      "filename": "shop__shop__special.md"
+    },
+    {
+      "module_id": "shop::shop::special::mod",
+      "filename": "shop__shop__special__mod.md"
+    },
+    {
+      "module_id": "shop::shop::tmod",
+      "filename": "shop__shop__tmod.md"
+    },
+    {
+      "module_id": "shop::shop::user",
+      "filename": "shop__shop__user.md"
+    }
+  ]
+}
