@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Floaty" Version="*" />
+    <PackageReference Include="RangeLib" Version="[6.*)" />
+    <PackageReference Include="CentralLib" />
+    <PackageReference Include="PropsLib" />
+    <PackageReference Include="BuildOnly" />
+  </ItemGroup>
+</Project>

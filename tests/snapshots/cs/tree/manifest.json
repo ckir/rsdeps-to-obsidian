@@ -1,0 +1,147 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "generated_files": [
+    "Cli__Cli-net48.md",
+    "Cli__Cli-net48__Cli__Worker.md",
+    "Cli__Cli-net48__Program.md",
+    "Cli__Cli-net8.0.md",
+    "Cli__Cli-net8.0__Cli__Worker.md",
+    "Cli__Cli-net8.0__Program.md",
+    "Tool__Tool.md",
+    "Tool__Tool__Shared__Models.md",
+    "Tool__Tool__Tool__Consumer.md",
+    "Web__Web.md",
+    "Web__Web__Shared__Models.md",
+    "Web__Web__Web__Alias.md",
+    "Web__Web__Web__Alpha.md",
+    "Web__Web__Web__Beta.md",
+    "Web__Web__Web__Cfg.md",
+    "Web__Web__Web__Consumer.md",
+    "Web__Web__Web__Ext.md",
+    "Web__Web__Web__Glob.md",
+    "Web__Web__Web__Partial.md",
+    "Web__Web__Web__Remnant.md",
+    "Web__Web__Web__Scoped.md",
+    "Web__Web__Web__Services.md",
+    "Web__Web__Web__Static.md",
+    "Web__Web__Web__Sys.md",
+    "Web__Web__Web__Unknown.md",
+    "Web__Web__Web__Unpinned.md",
+    "graph.json",
+    "index.md",
+    "rust-external-CentralLib__2.1.0.md",
+    "rust-external-Dapper__2.0.123.md",
+    "rust-external-Newtonsoft.Json__13.0.3.md",
+    "rust-external-PropsLib__4.0.0.md",
+    "rust-external-Serilog__3.1.1.md"
+  ],
+  "module_records": [
+    {
+      "module_id": "Cli::Cli-net48",
+      "filename": "Cli__Cli-net48.md"
+    },
+    {
+      "module_id": "Cli::Cli-net48::Cli::Worker",
+      "filename": "Cli__Cli-net48__Cli__Worker.md"
+    },
+    {
+      "module_id": "Cli::Cli-net48::Program",
+      "filename": "Cli__Cli-net48__Program.md"
+    },
+    {
+      "module_id": "Cli::Cli-net8.0",
+      "filename": "Cli__Cli-net8.0.md"
+    },
+    {
+      "module_id": "Cli::Cli-net8.0::Cli::Worker",
+      "filename": "Cli__Cli-net8.0__Cli__Worker.md"
+    },
+    {
+      "module_id": "Cli::Cli-net8.0::Program",
+      "filename": "Cli__Cli-net8.0__Program.md"
+    },
+    {
+      "module_id": "Tool::Tool",
+      "filename": "Tool__Tool.md"
+    },
+    {
+      "module_id": "Tool::Tool::Shared::Models",
+      "filename": "Tool__Tool__Shared__Models.md"
+    },
+    {
+      "module_id": "Tool::Tool::Tool::Consumer",
+      "filename": "Tool__Tool__Tool__Consumer.md"
+    },
+    {
+      "module_id": "Web::Web",
+      "filename": "Web__Web.md"
+    },
+    {
+      "module_id": "Web::Web::Shared::Models",
+      "filename": "Web__Web__Shared__Models.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Alias",
+      "filename": "Web__Web__Web__Alias.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Alpha",
+      "filename": "Web__Web__Web__Alpha.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Beta",
+      "filename": "Web__Web__Web__Beta.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Cfg",
+      "filename": "Web__Web__Web__Cfg.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Consumer",
+      "filename": "Web__Web__Web__Consumer.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Ext",
+      "filename": "Web__Web__Web__Ext.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Glob",
+      "filename": "Web__Web__Web__Glob.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Partial",
+      "filename": "Web__Web__Web__Partial.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Remnant",
+      "filename": "Web__Web__Web__Remnant.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Scoped",
+      "filename": "Web__Web__Web__Scoped.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Services",
+      "filename": "Web__Web__Web__Services.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Static",
+      "filename": "Web__Web__Web__Static.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Sys",
+      "filename": "Web__Web__Web__Sys.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Unknown",
+      "filename": "Web__Web__Web__Unknown.md"
+    },
+    {
+      "module_id": "Web::Web::Web::Unpinned",
+      "filename": "Web__Web__Web__Unpinned.md"
+    }
+  ]
+}

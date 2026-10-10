@@ -1,0 +1,8 @@
+warning[CFG001]: conditional compilation detected - graph reflects unexpanded source
+warning[EXT001]: unresolved external: Web::Web::Web::Unpinned -> Floaty.Thing; no pinned version (at Web/Unpinned.cs:1)
+warning[EXT001]: unresolved external: Web::Web::Web::Unpinned -> RangeLib.Thing; no pinned version (at Web/Unpinned.cs:2)
+warning[EXT001]: unresolved external: Web::Web::Web::Unpinned -> BuildOnly.Thing; no pinned version (at Web/Unpinned.cs:3)
+warning[SCOPE001]: scope collision: Cli::Cli-net48::Cli::Worker -> Shared.Models; unresolved syntactic ownership (at Cli/Worker.cs:3)
+warning[SCOPE001]: scope collision: Cli::Cli-net8.0::Cli::Worker -> Shared.Models; unresolved syntactic ownership (at Cli/Worker.cs:3)
+warning[SCOPE001]: scope collision: Web::Web::Web::Remnant -> NoSuchLib.Thing; unresolved syntactic ownership (at Web/Remnant.cs:1)
+warning[SCOPE001]: scope collision: Web::Web::Web::Unknown -> Bogus.Type; unresolved syntactic ownership (at Web/Unknown.cs:1)

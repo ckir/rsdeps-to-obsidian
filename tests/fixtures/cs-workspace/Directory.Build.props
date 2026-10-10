@@ -1,0 +1,7 @@
+<Project>
+  <!-- Versions defined only here are deliberately IGNORED: -->
+  <!-- Directory.Build.props is never read (spec section 9.7). -->
+  <ItemGroup>
+    <PackageVersion Include="BuildOnly" Version="9.9.9" />
+  </ItemGroup>
+</Project>

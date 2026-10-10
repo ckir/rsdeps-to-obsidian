@@ -1,0 +1,11 @@
+workspace: @@WORKSPACE@@
+packages: 3
+targets: 4
+modules: 26
+dependencies: 38
+external: 5
+create: 33
+update: 0
+delete: 0
+warnings: 8
+status: success

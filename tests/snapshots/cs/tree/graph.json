@@ -1,0 +1,651 @@
+{
+  "protocol_version": 1,
+  "spec_version": "0.5.0",
+  "schema_version": 3,
+  "generator": "cargo-obsidian-graph",
+  "packages": [
+    {
+      "id": "Cli",
+      "name": "Cli",
+      "manifest_path": "@@WORKSPACE@@/Cli/Cli.csproj"
+    },
+    {
+      "id": "Tool",
+      "name": "Tool",
+      "manifest_path": "@@WORKSPACE@@/Tool/Tool.csproj"
+    },
+    {
+      "id": "Web",
+      "name": "Web",
+      "manifest_path": "@@WORKSPACE@@/Web/Web.csproj"
+    }
+  ],
+  "targets": [
+    {
+      "id": "Cli::bin::Cli-net48",
+      "package_id": "Cli",
+      "name": "Cli-net48",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/Cli"
+    },
+    {
+      "id": "Cli::bin::Cli-net8.0",
+      "package_id": "Cli",
+      "name": "Cli-net8.0",
+      "kind": "bin",
+      "root_source": "@@WORKSPACE@@/Cli"
+    },
+    {
+      "id": "Tool::lib::Tool",
+      "package_id": "Tool",
+      "name": "Tool",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/Tool"
+    },
+    {
+      "id": "Web::lib::Web",
+      "package_id": "Web",
+      "name": "Web",
+      "kind": "lib",
+      "root_source": "@@WORKSPACE@@/Web"
+    }
+  ],
+  "modules": [
+    {
+      "id": "Cli::Cli-net48",
+      "target_id": "Cli::bin::Cli-net48",
+      "name": "Cli-net48",
+      "qualified_name": "Cli-net48",
+      "source_path": "@@WORKSPACE@@/Cli",
+      "source_span": null
+    },
+    {
+      "id": "Cli::Cli-net48::Cli::Worker",
+      "target_id": "Cli::bin::Cli-net48",
+      "name": "Worker",
+      "qualified_name": "Cli.Worker",
+      "source_path": "@@WORKSPACE@@/Cli/Worker.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Cli/Worker.cs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "id": "Cli::Cli-net48::Program",
+      "target_id": "Cli::bin::Cli-net48",
+      "name": "Program",
+      "qualified_name": "Program",
+      "source_path": "@@WORKSPACE@@/Cli/Program.cs",
+      "source_span": null
+    },
+    {
+      "id": "Cli::Cli-net8.0",
+      "target_id": "Cli::bin::Cli-net8.0",
+      "name": "Cli-net8.0",
+      "qualified_name": "Cli-net8.0",
+      "source_path": "@@WORKSPACE@@/Cli",
+      "source_span": null
+    },
+    {
+      "id": "Cli::Cli-net8.0::Cli::Worker",
+      "target_id": "Cli::bin::Cli-net8.0",
+      "name": "Worker",
+      "qualified_name": "Cli.Worker",
+      "source_path": "@@WORKSPACE@@/Cli/Worker.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Cli/Worker.cs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "id": "Cli::Cli-net8.0::Program",
+      "target_id": "Cli::bin::Cli-net8.0",
+      "name": "Program",
+      "qualified_name": "Program",
+      "source_path": "@@WORKSPACE@@/Cli/Program.cs",
+      "source_span": null
+    },
+    {
+      "id": "Tool::Tool",
+      "target_id": "Tool::lib::Tool",
+      "name": "Tool",
+      "qualified_name": "Tool",
+      "source_path": "@@WORKSPACE@@/Tool",
+      "source_span": null
+    },
+    {
+      "id": "Tool::Tool::Shared::Models",
+      "target_id": "Tool::lib::Tool",
+      "name": "Models",
+      "qualified_name": "Shared.Models",
+      "source_path": "@@WORKSPACE@@/Tool/ToolModels.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Tool/ToolModels.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "id": "Tool::Tool::Tool::Consumer",
+      "target_id": "Tool::lib::Tool",
+      "name": "Consumer",
+      "qualified_name": "Tool.Consumer",
+      "source_path": "@@WORKSPACE@@/Tool/ToolConsumer.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Tool/ToolConsumer.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web",
+      "target_id": "Web::lib::Web",
+      "name": "Web",
+      "qualified_name": "Web",
+      "source_path": "@@WORKSPACE@@/Web",
+      "source_span": null
+    },
+    {
+      "id": "Web::Web::Shared::Models",
+      "target_id": "Web::lib::Web",
+      "name": "Models",
+      "qualified_name": "Shared.Models",
+      "source_path": "@@WORKSPACE@@/Web/SharedModels.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/SharedModels.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "id": "Web::Web::Web::Alias",
+      "target_id": "Web::lib::Web",
+      "name": "Alias",
+      "qualified_name": "Web.Alias",
+      "source_path": "@@WORKSPACE@@/Web/Alias.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Alias.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Alpha",
+      "target_id": "Web::lib::Web",
+      "name": "Alpha",
+      "qualified_name": "Web.Alpha",
+      "source_path": "@@WORKSPACE@@/Web/Two.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Two.cs",
+        "line_start": 2,
+        "line_end": 5
+      }
+    },
+    {
+      "id": "Web::Web::Web::Beta",
+      "target_id": "Web::lib::Web",
+      "name": "Beta",
+      "qualified_name": "Web.Beta",
+      "source_path": "@@WORKSPACE@@/Web/Two.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Two.cs",
+        "line_start": 6,
+        "line_end": 9
+      }
+    },
+    {
+      "id": "Web::Web::Web::Cfg",
+      "target_id": "Web::lib::Web",
+      "name": "Cfg",
+      "qualified_name": "Web.Cfg",
+      "source_path": "@@WORKSPACE@@/Web/Cfg.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Cfg.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Consumer",
+      "target_id": "Web::lib::Web",
+      "name": "Consumer",
+      "qualified_name": "Web.Consumer",
+      "source_path": "@@WORKSPACE@@/Web/Consumer.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Consumer.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "id": "Web::Web::Web::Ext",
+      "target_id": "Web::lib::Web",
+      "name": "Ext",
+      "qualified_name": "Web.Ext",
+      "source_path": "@@WORKSPACE@@/Web/External.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/External.cs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    },
+    {
+      "id": "Web::Web::Web::Glob",
+      "target_id": "Web::lib::Web",
+      "name": "Glob",
+      "qualified_name": "Web.Glob",
+      "source_path": "@@WORKSPACE@@/Web/Global.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Global.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Partial",
+      "target_id": "Web::lib::Web",
+      "name": "Partial",
+      "qualified_name": "Web.Partial",
+      "source_path": "@@WORKSPACE@@/Web/Part1.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Part1.cs",
+        "line_start": 1,
+        "line_end": 4
+      }
+    },
+    {
+      "id": "Web::Web::Web::Remnant",
+      "target_id": "Web::lib::Web",
+      "name": "Remnant",
+      "qualified_name": "Web.Remnant",
+      "source_path": "@@WORKSPACE@@/Web/Remnant.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Remnant.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Scoped",
+      "target_id": "Web::lib::Web",
+      "name": "Scoped",
+      "qualified_name": "Web.Scoped",
+      "source_path": "@@WORKSPACE@@/Web/Scoped.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Scoped.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Services",
+      "target_id": "Web::lib::Web",
+      "name": "Services",
+      "qualified_name": "Web.Services",
+      "source_path": "@@WORKSPACE@@/Web/Services.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Services.cs",
+        "line_start": 1,
+        "line_end": 4
+      }
+    },
+    {
+      "id": "Web::Web::Web::Static",
+      "target_id": "Web::lib::Web",
+      "name": "Static",
+      "qualified_name": "Web.Static",
+      "source_path": "@@WORKSPACE@@/Web/Static.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Static.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Sys",
+      "target_id": "Web::lib::Web",
+      "name": "Sys",
+      "qualified_name": "Web.Sys",
+      "source_path": "@@WORKSPACE@@/Web/Sys.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Sys.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Unknown",
+      "target_id": "Web::lib::Web",
+      "name": "Unknown",
+      "qualified_name": "Web.Unknown",
+      "source_path": "@@WORKSPACE@@/Web/Unknown.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unknown.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "id": "Web::Web::Web::Unpinned",
+      "target_id": "Web::lib::Web",
+      "name": "Unpinned",
+      "qualified_name": "Web.Unpinned",
+      "source_path": "@@WORKSPACE@@/Web/Unpinned.cs",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unpinned.cs",
+        "line_start": 4,
+        "line_end": 4
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "Cli::Cli-net48",
+      "to": "Cli::Cli-net48::Cli::Worker",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Cli::Cli-net48",
+      "to": "Cli::Cli-net48::Program",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Cli::Cli-net48::Cli::Worker",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Cli::Cli-net48::Cli::Worker",
+      "to": "Serilog@3.1.1",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Cli::Cli-net48::Program",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Cli::Cli-net8.0",
+      "to": "Cli::Cli-net8.0::Cli::Worker",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Cli::Cli-net8.0",
+      "to": "Cli::Cli-net8.0::Program",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Cli::Cli-net8.0::Cli::Worker",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Cli::Cli-net8.0::Cli::Worker",
+      "to": "Serilog@3.1.1",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Cli::Cli-net8.0::Program",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Tool::Tool",
+      "to": "Tool::Tool::Shared::Models",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Tool::Tool",
+      "to": "Tool::Tool::Tool::Consumer",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Tool::Tool::Tool::Consumer",
+      "to": "Dapper@2.0.123",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Shared::Models",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Alias",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Alpha",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Beta",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Cfg",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Consumer",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Ext",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Glob",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Partial",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Remnant",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Scoped",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Static",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Sys",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Unknown",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web",
+      "to": "Web::Web::Web::Unpinned",
+      "target_type": "internal",
+      "kind": "module"
+    },
+    {
+      "from": "Web::Web::Web::Alias",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Alpha",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Beta",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Cfg",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Ext",
+      "to": "CentralLib@2.1.0",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Ext",
+      "to": "Newtonsoft.Json@13.0.3",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Ext",
+      "to": "PropsLib@4.0.0",
+      "target_type": "external",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Scoped",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    },
+    {
+      "from": "Web::Web::Web::Static",
+      "to": "Web::Web::Web::Services",
+      "target_type": "internal",
+      "kind": "use"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "CFG001",
+      "message": "conditional compilation detected - graph reflects unexpanded source",
+      "source_span": null
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: Web::Web::Web::Unpinned -> Floaty.Thing; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unpinned.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: Web::Web::Web::Unpinned -> RangeLib.Thing; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unpinned.cs",
+        "line_start": 2,
+        "line_end": 2
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "EXT001",
+      "message": "unresolved external: Web::Web::Web::Unpinned -> BuildOnly.Thing; no pinned version",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unpinned.cs",
+        "line_start": 3,
+        "line_end": 3
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: Cli::Cli-net48::Cli::Worker -> Shared.Models; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Cli/Worker.cs",
+        "line_start": 3,
+        "line_end": 3
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: Cli::Cli-net8.0::Cli::Worker -> Shared.Models; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Cli/Worker.cs",
+        "line_start": 3,
+        "line_end": 3
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: Web::Web::Web::Remnant -> NoSuchLib.Thing; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Remnant.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "SCOPE001",
+      "message": "scope collision: Web::Web::Web::Unknown -> Bogus.Type; unresolved syntactic ownership",
+      "source_span": {
+        "file": "@@WORKSPACE@@/Web/Unknown.cs",
+        "line_start": 1,
+        "line_end": 1
+      }
+    }
+  ]
+}
